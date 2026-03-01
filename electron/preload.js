@@ -17,6 +17,12 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onAppDialogRequest: (callback) => {
     ipcRenderer.on("app-dialog-request", (_, payload) => callback(payload));
   },
+  onSettingsUpdated: (callback) => {
+    ipcRenderer.on("settings-updated", (_, settings) => callback(settings));
+  },
+  onBackupAvailable: (callback) => {
+    ipcRenderer.on("backup-available", (_, payload) => callback(payload));
+  },
 
   // Renderer → Main
   sendContent: (channel, content) => {
@@ -43,4 +49,8 @@ contextBridge.exposeInMainWorld("electronAPI", {
   toggleMaximizeWindow: () => ipcRenderer.send("window:toggle-maximize"),
   closeWindow: () => ipcRenderer.send("window:close"),
   isWindowMaximized: () => ipcRenderer.invoke("window:is-maximized"),
+  getSettings: () => ipcRenderer.invoke("settings:get"),
+  updateSettings: (patch) => ipcRenderer.invoke("settings:update", patch),
+  writeBackup: (payload) => ipcRenderer.invoke("backup:write", payload),
+  clearBackup: () => ipcRenderer.invoke("backup:clear"),
 });

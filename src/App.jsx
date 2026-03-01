@@ -1,34 +1,95 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { parseJournal, collectAccounts, findTypoWarnings, highlightLine } from "./parser.js";
+import { getTheme, themeCssVars, THEMES } from "./themes/index.js";
 
 /* ─── styles ─────────────────────────────────────────────────────── */
 
 const C = {
-  bg: "#1a1d23",
-  bgLight: "#21252b",
-  gutter: "#282c34",
-  gutterText: "#495162",
-  gutterActive: "#636d83",
-  text: "#abb2bf",
-  cursor: "#528bff",
-  selection: "#3e4451",
-  date: "#e5c07b",
-  desc: "#c8ccd4",
-  account: "#61afef",
-  amount: "#98c379",
-  comment: "#5c6370",
-  error: "#e06c75",
-  errorBg: "rgba(224,108,117,0.08)",
-  warning: "#d19a66",
-  warningBg: "rgba(209,154,102,0.08)",
-  border: "#2c313a",
-  panelBg: "#1e2127",
-  accent: "#61afef",
-  banner: "#2a1f14",
-  bannerBorder: "#5c4a32",
+  bg: "var(--bg)",
+  bgLight: "var(--bgLight)",
+  gutter: "var(--gutter)",
+  gutterText: "var(--gutterText)",
+  gutterActive: "var(--gutterActive)",
+  text: "var(--text)",
+  cursor: "var(--cursor)",
+  selection: "var(--selection)",
+  selectionText: "var(--selectionText)",
+  date: "var(--date)",
+  desc: "var(--desc)",
+  account: "var(--account)",
+  amount: "var(--amount)",
+  comment: "var(--comment)",
+  error: "var(--error)",
+  errorBg: "var(--errorBg)",
+  warning: "var(--warning)",
+  warningBg: "var(--warningBg)",
+  border: "var(--border)",
+  panelBg: "var(--panelBg)",
+  accent: "var(--accent)",
+  accentSoft: "var(--accentSoft)",
+  banner: "var(--banner)",
+  bannerBorder: "var(--bannerBorder)",
+  overlay: "var(--overlay)",
 };
 
 const FONT = "'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace";
+const DEFAULT_SETTINGS = {
+  theme: { id: "dark", fontSize: 13, lineHeight: 21 },
+  editor: { showDirtyMarkers: true, autoSave: false, autoSaveDelayMs: 1500 },
+  safety: { backupEnabled: true, backupIntervalSec: 30, keepBackups: 20 },
+  shortcuts: {
+    "file.open": "Ctrl+O",
+    "file.save": "Ctrl+S",
+    "file.saveAs": "Ctrl+Shift+S",
+    "file.new": "Ctrl+N",
+    "help.hotkeys": "F1",
+    "editor.find": "Ctrl+F",
+    "editor.replace": "Ctrl+H",
+    "editor.gotoLine": "Ctrl+G",
+    "app.settings": "Ctrl+,",
+  },
+};
+
+function mergeSettings(base, patch) {
+  return {
+    ...base,
+    ...patch,
+    theme: { ...base.theme, ...(patch?.theme || {}) },
+    editor: { ...base.editor, ...(patch?.editor || {}) },
+    safety: { ...base.safety, ...(patch?.safety || {}) },
+    shortcuts: { ...base.shortcuts, ...(patch?.shortcuts || {}) },
+  };
+}
+
+function normalizeShortcut(input) {
+  if (!input) return "";
+  return String(input)
+    .trim()
+    .replace(/\s+/g, "")
+    .replace(/CmdOrCtrl/gi, "Ctrl")
+    .replace(/CtrlOrCmd/gi, "Ctrl")
+    .replace(/Control/gi, "Ctrl")
+    .replace(/Command/gi, "Meta");
+}
+
+function eventToShortcut(e) {
+  const keyRaw = e.key.length === 1 ? e.key.toUpperCase() : e.key;
+  let key = keyRaw;
+  if (key === " ") key = "Space";
+  if (key === "Escape") key = "Esc";
+  if (key === "ArrowUp") key = "Up";
+  if (key === "ArrowDown") key = "Down";
+  if (key === "ArrowLeft") key = "Left";
+  if (key === "ArrowRight") key = "Right";
+
+  const parts = [];
+  if (e.ctrlKey) parts.push("Ctrl");
+  if (e.metaKey) parts.push("Meta");
+  if (e.altKey) parts.push("Alt");
+  if (e.shiftKey) parts.push("Shift");
+  parts.push(key);
+  return normalizeShortcut(parts.join("+"));
+}
 
 /* ─── Error Panel ────────────────────────────────────────────────── */
 
@@ -82,9 +143,9 @@ function ErrorPanel({ errors, warnings, onClickError, onAutofix, panelMode, setP
                 {item.type === "typo" && item.from && item.to && (
                   <button
                     onClick={(e) => { e.stopPropagation(); onAutofix(item.from, item.to); }}
-                    style={{ background: "transparent", border: `1px solid ${C.accent}44`, color: C.accent, padding: "2px 10px", borderRadius: 4, fontSize: 10, fontFamily: FONT, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0, transition: "all 0.15s" }}
+                    style={{ background: "transparent", border: `1px solid ${C.accentSoft}`, color: C.accent, padding: "2px 10px", borderRadius: 4, fontSize: 10, fontFamily: FONT, fontWeight: 600, cursor: "pointer", whiteSpace: "nowrap", flexShrink: 0, transition: "all 0.15s" }}
                     onMouseEnter={(e) => { e.currentTarget.style.background = C.accent; e.currentTarget.style.color = "#fff"; e.currentTarget.style.borderColor = C.accent; }}
-                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.accent; e.currentTarget.style.borderColor = C.accent + "44"; }}
+                    onMouseLeave={(e) => { e.currentTarget.style.background = "transparent"; e.currentTarget.style.color = C.accent; e.currentTarget.style.borderColor = C.accentSoft; }}
                   >Fix → {item.to.split(":").pop()}</button>
                 )}
                 <span onClick={() => onClickError(item.line)} style={{ color: C.gutterText, fontSize: 11, whiteSpace: "nowrap", flexShrink: 0 }}>Ln {item.line + 1}</span>
@@ -168,7 +229,7 @@ function HotkeysModal({ onClose }) {
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(8, 10, 14, 0.55)",
+        background: C.overlay,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -243,7 +304,7 @@ function AppDialogModal({ request, onRespond }) {
       style={{
         position: "fixed",
         inset: 0,
-        background: "rgba(8, 10, 14, 0.55)",
+        background: C.overlay,
         display: "flex",
         alignItems: "center",
         justifyContent: "center",
@@ -303,9 +364,183 @@ function AppDialogModal({ request, onRespond }) {
   );
 }
 
+function SettingsModal({ settingsDraft, onChange, onSave, onClose }) {
+  if (!settingsDraft) return null;
+  const shortcutEntries = Object.entries(settingsDraft.shortcuts || {});
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: C.overlay,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 50,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: 760,
+          maxWidth: "94vw",
+          maxHeight: "90vh",
+          overflow: "auto",
+          background: C.panelBg,
+          border: `1px solid ${C.border}`,
+          borderRadius: 8,
+          boxShadow: "0 14px 40px rgba(0,0,0,0.45)",
+          fontFamily: FONT,
+          color: C.text,
+          padding: 14,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", marginBottom: 10 }}>
+          <span style={{ color: C.accent, fontWeight: 700 }}>Settings</span>
+          <div style={{ flex: 1 }} />
+          <button onClick={onClose} style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.gutterActive, borderRadius: 4, padding: "4px 8px", fontFamily: FONT, fontSize: 11, cursor: "pointer" }}>Close</button>
+        </div>
+
+        <div style={{ borderTop: `1px solid ${C.border}`, paddingTop: 10 }}>
+          <div style={{ fontSize: 11, color: C.gutterActive, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Appearance</div>
+          <div style={{ display: "flex", gap: 10, alignItems: "center", flexWrap: "wrap", marginBottom: 10 }}>
+            <label style={{ fontSize: 12 }}>
+              Theme{" "}
+              <select
+                value={settingsDraft.theme.id}
+                onChange={(e) => onChange({ theme: { id: e.target.value } })}
+                style={{ marginLeft: 6, background: C.bg, color: C.text, border: `1px solid ${C.border}`, borderRadius: 4, padding: "2px 6px", fontFamily: FONT }}
+              >
+                {Object.keys(THEMES).map((id) => <option key={id} value={id}>{id}</option>)}
+              </select>
+            </label>
+            <label style={{ fontSize: 12 }}>
+              Font size{" "}
+              <input
+                type="number"
+                min={10}
+                max={24}
+                value={settingsDraft.theme.fontSize}
+                onChange={(e) => onChange({ theme: { fontSize: Number(e.target.value || 13) } })}
+                style={{ width: 70, marginLeft: 6, background: C.bg, color: C.text, border: `1px solid ${C.border}`, borderRadius: 4, padding: "2px 6px", fontFamily: FONT }}
+              />
+            </label>
+            <label style={{ fontSize: 12 }}>
+              Line height{" "}
+              <input
+                type="number"
+                min={16}
+                max={36}
+                value={settingsDraft.theme.lineHeight}
+                onChange={(e) => onChange({ theme: { lineHeight: Number(e.target.value || 21) } })}
+                style={{ width: 70, marginLeft: 6, background: C.bg, color: C.text, border: `1px solid ${C.border}`, borderRadius: 4, padding: "2px 6px", fontFamily: FONT }}
+              />
+            </label>
+          </div>
+
+          <div style={{ fontSize: 11, color: C.gutterActive, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Editing & Safety</div>
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(220px, 1fr))", gap: 8, marginBottom: 10 }}>
+            <label style={{ fontSize: 12 }}>
+              <input type="checkbox" checked={settingsDraft.editor.autoSave} onChange={(e) => onChange({ editor: { autoSave: e.target.checked } })} /> Auto-save
+            </label>
+            <label style={{ fontSize: 12 }}>
+              Auto-save delay (ms){" "}
+              <input
+                type="number"
+                min={250}
+                max={10000}
+                value={settingsDraft.editor.autoSaveDelayMs}
+                onChange={(e) => onChange({ editor: { autoSaveDelayMs: Number(e.target.value || 1500) } })}
+                style={{ width: 90, marginLeft: 6, background: C.bg, color: C.text, border: `1px solid ${C.border}`, borderRadius: 4, padding: "2px 6px", fontFamily: FONT }}
+              />
+            </label>
+            <label style={{ fontSize: 12 }}>
+              <input type="checkbox" checked={settingsDraft.editor.showDirtyMarkers} onChange={(e) => onChange({ editor: { showDirtyMarkers: e.target.checked } })} /> Show unsaved line markers
+            </label>
+            <label style={{ fontSize: 12 }}>
+              <input type="checkbox" checked={settingsDraft.safety.backupEnabled} onChange={(e) => onChange({ safety: { backupEnabled: e.target.checked } })} /> Crash-safe backup
+            </label>
+            <label style={{ fontSize: 12 }}>
+              Backup interval (sec){" "}
+              <input
+                type="number"
+                min={5}
+                max={300}
+                value={settingsDraft.safety.backupIntervalSec}
+                onChange={(e) => onChange({ safety: { backupIntervalSec: Number(e.target.value || 30) } })}
+                style={{ width: 90, marginLeft: 6, background: C.bg, color: C.text, border: `1px solid ${C.border}`, borderRadius: 4, padding: "2px 6px", fontFamily: FONT }}
+              />
+            </label>
+          </div>
+
+          <div style={{ fontSize: 11, color: C.gutterActive, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Shortcuts</div>
+          <div style={{ maxHeight: 220, overflowY: "auto", border: `1px solid ${C.border}`, borderRadius: 6 }}>
+            {shortcutEntries.map(([command, shortcut]) => (
+              <div key={command} style={{ display: "flex", alignItems: "center", padding: "6px 8px", borderBottom: `1px solid ${C.border}`, gap: 8 }}>
+                <span style={{ flex: 1, fontSize: 12 }}>{command}</span>
+                <input
+                  value={shortcut}
+                  onChange={(e) => onChange({ shortcuts: { [command]: e.target.value } })}
+                  style={{ width: 140, background: C.bg, color: C.text, border: `1px solid ${C.border}`, borderRadius: 4, padding: "3px 6px", fontFamily: FONT, fontSize: 11 }}
+                />
+              </div>
+            ))}
+          </div>
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12, gap: 8 }}>
+          <button onClick={onClose} style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.gutterActive, borderRadius: 4, padding: "5px 10px", fontFamily: FONT, cursor: "pointer", fontSize: 11 }}>Cancel</button>
+          <button onClick={onSave} style={{ background: C.accent, color: "#fff", border: "none", borderRadius: 4, padding: "5px 10px", fontFamily: FONT, cursor: "pointer", fontSize: 11, fontWeight: 600 }}>Save settings</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function SmallModal({ title, children, onClose, width = 460 }) {
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: C.overlay,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 45,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width,
+          maxWidth: "90vw",
+          background: C.panelBg,
+          border: `1px solid ${C.border}`,
+          borderRadius: 8,
+          boxShadow: "0 14px 40px rgba(0,0,0,0.45)",
+          fontFamily: FONT,
+          color: C.text,
+          padding: 12,
+        }}
+      >
+        <div style={{ display: "flex", alignItems: "center", marginBottom: 10 }}>
+          <span style={{ color: C.accent, fontWeight: 700 }}>{title}</span>
+          <div style={{ flex: 1 }} />
+          <button onClick={onClose} style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.gutterActive, borderRadius: 4, padding: "3px 8px", fontFamily: FONT, fontSize: 11, cursor: "pointer" }}>Close</button>
+        </div>
+        {children}
+      </div>
+    </div>
+  );
+}
+
 /* ─── Custom Title Bar ───────────────────────────────────────────── */
 
-function TitleBar({ filePath, onHelp, isMaximized, onMinimize, onToggleMaximize, onClose }) {
+function TitleBar({ filePath, onHelp, onSettings, isMaximized, onMinimize, onToggleMaximize, onClose }) {
   const displayPath = filePath || "Untitled";
   return (
     <div
@@ -334,6 +569,13 @@ function TitleBar({ filePath, onHelp, isMaximized, onMinimize, onToggleMaximize,
         title="Hotkeys"
       >
         ?
+      </button>
+      <button
+        onClick={onSettings}
+        style={{ WebkitAppRegion: "no-drag", width: 24, height: 24, marginRight: 6, borderRadius: 4, border: `1px solid ${C.border}`, background: "transparent", color: C.gutterActive, fontFamily: FONT, fontWeight: 700, cursor: "pointer", fontSize: 12 }}
+        title="Settings"
+      >
+        *
       </button>
       <button
         onClick={onMinimize}
@@ -378,8 +620,18 @@ export default function App() {
   const [filePath, setFilePath] = useState(null);
   const [baselineText, setBaselineText] = useState("");
   const [includedFiles, setIncludedFiles] = useState([]);
+  const [settings, setSettings] = useState(DEFAULT_SETTINGS);
+  const [settingsDraft, setSettingsDraft] = useState(null);
   const [showExternalChange, setShowExternalChange] = useState(false);
   const [showHotkeys, setShowHotkeys] = useState(false);
+  const [showFind, setShowFind] = useState(false);
+  const [showReplace, setShowReplace] = useState(false);
+  const [showGotoLine, setShowGotoLine] = useState(false);
+  const [findQuery, setFindQuery] = useState("");
+  const [replaceQuery, setReplaceQuery] = useState("");
+  const [gotoLineInput, setGotoLineInput] = useState("");
+  const [backupOffer, setBackupOffer] = useState(null);
+  const [accountSuggest, setAccountSuggest] = useState(null);
   const [appDialogRequest, setAppDialogRequest] = useState(null);
   const [isMaximized, setIsMaximized] = useState(false);
   const textareaRef = useRef(null);
@@ -390,9 +642,11 @@ export default function App() {
   const flashTimerRef = useRef(null);
   const [panelMode, setPanelMode] = useState("peek");
   const textRef = useRef(text); // always-current ref for IPC
+  const filePathRef = useRef(filePath);
 
   // Keep ref in sync
   useEffect(() => { textRef.current = text; }, [text]);
+  useEffect(() => { filePathRef.current = filePath; }, [filePath]);
 
   // ─── Electron IPC ──────────────────────────────────────────────
   useEffect(() => {
@@ -421,8 +675,17 @@ export default function App() {
     api.onAppDialogRequest((request) => {
       setAppDialogRequest(request || null);
     });
+    api.onSettingsUpdated((nextSettings) => {
+      setSettings(mergeSettings(DEFAULT_SETTINGS, nextSettings || {}));
+    });
+    api.onBackupAvailable((payload) => {
+      setBackupOffer(payload || null);
+    });
 
     api.isWindowMaximized?.().then((val) => setIsMaximized(Boolean(val)));
+    api.getSettings?.().then((loaded) => {
+      setSettings(mergeSettings(DEFAULT_SETTINGS, loaded || {}));
+    });
   }, []);
 
   const respondAppDialog = useCallback((result) => {
@@ -439,17 +702,92 @@ export default function App() {
     }
   }, []);
 
+  const openSettings = useCallback(() => {
+    setSettingsDraft(settings);
+  }, [settings]);
+
+  const saveSettings = useCallback(async () => {
+    const draft = settingsDraft || settings;
+    const merged = mergeSettings(DEFAULT_SETTINGS, draft);
+    setSettings(merged);
+    setSettingsDraft(null);
+    await window.electronAPI?.updateSettings?.(merged);
+  }, [settingsDraft, settings]);
+
+  const applyFindNext = useCallback((query) => {
+    if (!query || !textareaRef.current) return;
+    const area = textareaRef.current;
+    const content = textRef.current;
+    const from = area.selectionEnd || 0;
+    const direct = content.toLowerCase().indexOf(query.toLowerCase(), from);
+    const idx = direct >= 0 ? direct : content.toLowerCase().indexOf(query.toLowerCase(), 0);
+    if (idx >= 0) {
+      area.focus();
+      area.selectionStart = idx;
+      area.selectionEnd = idx + query.length;
+      setCursorLine(content.slice(0, idx).split("\n").length - 1);
+    }
+  }, []);
+
+  const applyReplaceCurrent = useCallback(() => {
+    if (!findQuery || !textareaRef.current) return;
+    const area = textareaRef.current;
+    const content = textRef.current;
+    const s = area.selectionStart;
+    const e = area.selectionEnd;
+    const selected = content.slice(s, e);
+    if (selected.toLowerCase() === findQuery.toLowerCase()) {
+      const next = content.slice(0, s) + replaceQuery + content.slice(e);
+      handleTextChange(next);
+      requestAnimationFrame(() => {
+        if (textareaRef.current) {
+          textareaRef.current.selectionStart = s;
+          textareaRef.current.selectionEnd = s + replaceQuery.length;
+        }
+      });
+    } else {
+      applyFindNext(findQuery);
+    }
+  }, [findQuery, replaceQuery, handleTextChange, applyFindNext]);
+
+  const applyReplaceAll = useCallback(() => {
+    if (!findQuery) return;
+    const escaped = findQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+    const regex = new RegExp(escaped, "gi");
+    handleTextChange(textRef.current.replace(regex, replaceQuery));
+  }, [findQuery, replaceQuery, handleTextChange]);
+
+  const runCommand = useCallback((command) => {
+    if (command === "file.open") window.electronAPI?.openFile?.();
+    else if (command === "file.new") window.electronAPI?.newFile?.();
+    else if (command === "file.save") window.electronAPI?.saveFile?.();
+    else if (command === "file.saveAs") window.electronAPI?.saveFileAs?.();
+    else if (command === "help.hotkeys") setShowHotkeys(true);
+    else if (command === "app.settings") openSettings();
+    else if (command === "editor.find") {
+      setShowFind(true);
+      setShowReplace(false);
+    } else if (command === "editor.replace") {
+      setShowFind(true);
+      setShowReplace(true);
+    } else if (command === "editor.gotoLine") setShowGotoLine(true);
+  }, [openSettings]);
+
   useEffect(() => {
     if (!window.electronAPI) return undefined;
     const onKey = (e) => {
-      const mod = e.ctrlKey || e.metaKey;
-      if (e.key === "F1") {
-        e.preventDefault();
-        setShowHotkeys(true);
-        return;
-      }
       if (e.key === "Escape" && showHotkeys) {
         setShowHotkeys(false);
+        return;
+      }
+      if (e.key === "Escape" && settingsDraft) {
+        setSettingsDraft(null);
+        return;
+      }
+      if (e.key === "Escape" && (showFind || showGotoLine)) {
+        setShowFind(false);
+        setShowReplace(false);
+        setShowGotoLine(false);
         return;
       }
       if (e.key === "Escape" && appDialogRequest) {
@@ -457,26 +795,54 @@ export default function App() {
         respondAppDialog(appDialogRequest.kind === "error" ? "ok" : "cancel");
         return;
       }
-      if (!mod) return;
 
-      const k = e.key.toLowerCase();
-      if (k === "o") {
+      const actual = eventToShortcut(e);
+      const mappings = settings.shortcuts || {};
+      const matched = Object.keys(mappings).find(
+        (cmd) => normalizeShortcut(mappings[cmd]) === actual
+      );
+      if (matched) {
         e.preventDefault();
-        window.electronAPI.openFile?.();
-      } else if (k === "n") {
-        e.preventDefault();
-        window.electronAPI.newFile?.();
-      } else if (k === "s" && e.shiftKey) {
-        e.preventDefault();
-        window.electronAPI.saveFileAs?.();
-      } else if (k === "s") {
-        e.preventDefault();
-        window.electronAPI.saveFile?.();
+        runCommand(matched);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [showHotkeys, appDialogRequest, respondAppDialog]);
+  }, [showHotkeys, settingsDraft, showFind, showGotoLine, appDialogRequest, respondAppDialog, settings, runCommand]);
+
+  useEffect(() => {
+    if (!window.electronAPI) return undefined;
+    if (!settings.editor.autoSave) return undefined;
+    if (!filePath) return undefined;
+    if (text === baselineText) return undefined;
+
+    const timer = setTimeout(() => {
+      window.electronAPI.saveFile?.();
+    }, settings.editor.autoSaveDelayMs);
+
+    return () => clearTimeout(timer);
+  }, [settings, filePath, text, baselineText]);
+
+  useEffect(() => {
+    if (!window.electronAPI) return undefined;
+    if (!settings.safety.backupEnabled) return undefined;
+    if (text === baselineText) return undefined;
+
+    const intervalMs = settings.safety.backupIntervalSec * 1000;
+    const id = setInterval(() => {
+      window.electronAPI.writeBackup?.({
+        text: textRef.current,
+        filePath: filePathRef.current,
+      });
+    }, intervalMs);
+
+    return () => clearInterval(id);
+  }, [settings, text, baselineText]);
+
+  useEffect(() => {
+    if (!window.electronAPI) return;
+    if (text === baselineText) window.electronAPI.clearBackup?.();
+  }, [text, baselineText]);
 
   useEffect(() => {
     if (!window.electronAPI || !filePath) {
@@ -510,6 +876,10 @@ export default function App() {
   const transactionsForAnalysis = useMemo(
     () => [...transactionsRoot, ...transactionsIncluded],
     [transactionsRoot, transactionsIncluded]
+  );
+  const accountNames = useMemo(
+    () => Object.keys(collectAccounts(transactionsForAnalysis)).sort((a, b) => a.localeCompare(b)),
+    [transactionsForAnalysis]
   );
   const typoWarnings = useMemo(() => findTypoWarnings(transactionsForAnalysis), [transactionsForAnalysis]);
   const rootTypoWarnings = useMemo(
@@ -545,7 +915,47 @@ export default function App() {
     const pos = textareaRef.current.selectionStart;
     const upTo = text.slice(0, pos);
     setCursorLine(upTo.split("\n").length - 1);
-  }, [text]);
+    const lineStart = text.lastIndexOf("\n", pos - 1) + 1;
+    const lineEndRaw = text.indexOf("\n", pos);
+    const lineEnd = lineEndRaw === -1 ? text.length : lineEndRaw;
+    const line = text.slice(lineStart, lineEnd);
+    if (!/^\s/.test(line)) {
+      setAccountSuggest(null);
+      return;
+    }
+
+    const localPos = pos - lineStart;
+    const before = line.slice(0, localPos);
+    const indent = (line.match(/^(\s*)/) || [""])[0];
+    const accountPart = before.slice(indent.length);
+    if (accountPart.includes("  ")) {
+      setAccountSuggest(null);
+      return;
+    }
+
+    const prefix = accountPart.trimStart();
+    if (!prefix) {
+      setAccountSuggest(null);
+      return;
+    }
+
+    const matches = accountNames
+      .filter((acct) => acct.toLowerCase().startsWith(prefix.toLowerCase()))
+      .slice(0, 6);
+
+    if (matches.length === 0) {
+      setAccountSuggest(null);
+      return;
+    }
+
+    const prefixStartInLine = indent.length + accountPart.length - prefix.length;
+    setAccountSuggest({
+      matches,
+      start: lineStart + prefixStartInLine,
+      end: pos,
+      prefix,
+    });
+  }, [text, accountNames]);
 
   useEffect(() => { updateCursorLine(); }, [text, updateCursorLine]);
 
@@ -558,12 +968,19 @@ export default function App() {
     textareaRef.current.focus();
     textareaRef.current.selectionStart = pos;
     textareaRef.current.selectionEnd = pos;
-    textareaRef.current.scrollTop = lineNum * 21 - 100;
+    textareaRef.current.scrollTop = lineNum * settings.theme.lineHeight - 100;
     setCursorLine(lineNum);
     if (flashTimerRef.current) clearTimeout(flashTimerRef.current);
     setFlashLine(lineNum);
     flashTimerRef.current = setTimeout(() => setFlashLine(null), 1500);
-  }, [text]);
+  }, [text, settings.theme.lineHeight]);
+
+  const jumpToLineFromInput = useCallback(() => {
+    const parsed = Number(gotoLineInput);
+    if (!Number.isFinite(parsed)) return;
+    goToLine(Math.max(0, parsed - 1));
+    setShowGotoLine(false);
+  }, [gotoLineInput, goToLine]);
 
   // ─── Autofix ──────────────────────────────────────────────────
   const handleAutofix = useCallback((from, to) => {
@@ -574,11 +991,13 @@ export default function App() {
     handleTextChange(newText);
   }, [text, handleTextChange]);
 
-  const lineHeight = 21;
-  const fontSize = 13;
+  const lineHeight = settings.theme.lineHeight;
+  const fontSize = settings.theme.fontSize;
+  const activeTheme = getTheme(settings.theme.id);
+  const cssVars = themeCssVars(activeTheme);
 
   return (
-    <div style={{ height: "100vh", display: "flex", flexDirection: "column", background: C.bg, color: C.text }}>
+    <div style={{ ...cssVars, height: "100vh", display: "flex", flexDirection: "column", background: C.bg, color: C.text }}>
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600;700&display=swap');
         * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -593,7 +1012,7 @@ export default function App() {
         .seg-cm { color: ${C.comment}; font-style: italic; }
         .line-error { background: ${C.errorBg}; }
         .line-warning { background: ${C.warningBg}; }
-        .textarea-editor::selection { background: rgba(97,175,239,0.30); color: #dbe9ff; }
+        .textarea-editor::selection { background: ${C.selection}; color: ${C.selectionText}; }
         @keyframes line-flash-anim {
           0% { background: rgba(97,175,239,0.18); box-shadow: inset 3px 0 0 ${C.accent}; }
           55% { background: rgba(97,175,239,0.18); box-shadow: inset 3px 0 0 ${C.accent}; }
@@ -614,6 +1033,7 @@ export default function App() {
         <TitleBar
           filePath={filePath}
           onHelp={() => setShowHotkeys(true)}
+          onSettings={openSettings}
           isMaximized={isMaximized}
           onMinimize={() => window.electronAPI?.minimizeWindow?.()}
           onToggleMaximize={async () => {
@@ -627,6 +1047,9 @@ export default function App() {
         <div style={{ height: 34, background: C.panelBg, borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", padding: "0 10px", gap: 10, flexShrink: 0, fontFamily: FONT }}>
           <span style={{ color: C.accent, fontWeight: 700, fontSize: 11 }}>hledger</span>
           <div style={{ flex: 1 }} />
+          <button onClick={openSettings} style={{ width: 24, height: 24, borderRadius: 4, border: `1px solid ${C.border}`, background: "transparent", color: C.gutterActive, fontWeight: 700, fontFamily: FONT, cursor: "pointer", fontSize: 12 }}>
+            *
+          </button>
           <button onClick={() => setShowHotkeys(true)} style={{ width: 24, height: 24, borderRadius: 4, border: `1px solid ${C.border}`, background: "transparent", color: C.gutterActive, fontWeight: 700, fontFamily: FONT, cursor: "pointer", fontSize: 12 }}>
             ?
           </button>
@@ -643,7 +1066,7 @@ export default function App() {
               const isWarn = !isErr && warningLines.has(i);
               return (
                 <div key={i} style={{ height: lineHeight, lineHeight: lineHeight + "px", fontFamily: FONT, fontSize: 11, textAlign: "right", paddingRight: 8, color: i === cursorLine ? C.gutterActive : isErr ? C.error : isWarn ? C.warning : C.gutterText, fontWeight: i === cursorLine ? 600 : 400, position: "relative" }}>
-                  {dirtyLines.has(i) && <span style={{ position: "absolute", left: 1, top: 2, width: 3, height: lineHeight - 4, background: "#8bdc8e", borderRadius: 2 }} />}
+                  {settings.editor.showDirtyMarkers && dirtyLines.has(i) && <span style={{ position: "absolute", left: 1, top: 2, width: 3, height: lineHeight - 4, background: C.amount, borderRadius: 2 }} />}
                   {isErr && <span style={{ position: "absolute", left: 6, color: C.error, fontSize: 8, top: 6 }}>●</span>}
                   {isWarn && <span style={{ position: "absolute", left: 5, color: C.warning, fontSize: 9, top: 5 }}>▲</span>}
                   {i + 1}
@@ -676,6 +1099,22 @@ export default function App() {
             spellCheck={false}
             style={{ position: "absolute", left: 52, top: 0, right: 0, bottom: 0, fontFamily: FONT, fontSize, lineHeight: lineHeight + "px", paddingTop: 8, paddingLeft: 12, paddingRight: 12, color: "transparent", caretColor: C.cursor, background: "transparent", border: "none", outline: "none", resize: "none", whiteSpace: "pre", overflowWrap: "normal", overflow: "auto", zIndex: 2, width: "calc(100% - 52px)", tabSize: 4 }}
             onKeyDown={(e) => {
+              if ((e.key === "Tab" || e.key === "Enter") && accountSuggest?.matches?.length) {
+                e.preventDefault();
+                const chosen = accountSuggest.matches[0];
+                const content = textRef.current;
+                const next = content.slice(0, accountSuggest.start) + chosen + content.slice(accountSuggest.end);
+                const caret = accountSuggest.start + chosen.length;
+                handleTextChange(next);
+                requestAnimationFrame(() => {
+                  if (textareaRef.current) {
+                    textareaRef.current.selectionStart = caret;
+                    textareaRef.current.selectionEnd = caret;
+                    updateCursorLine();
+                  }
+                });
+                return;
+              }
               if (e.key === "Tab") {
                 e.preventDefault();
                 const start = e.target.selectionStart;
@@ -688,12 +1127,122 @@ export default function App() {
               }
             }}
           />
+          {accountSuggest?.matches?.length > 0 && (
+            <div
+              style={{
+                position: "absolute",
+                left: 64,
+                bottom: 10,
+                zIndex: 5,
+                minWidth: 280,
+                maxWidth: 420,
+                background: C.panelBg,
+                border: `1px solid ${C.border}`,
+                borderRadius: 6,
+                boxShadow: "0 8px 26px rgba(0,0,0,0.35)",
+                fontFamily: FONT,
+                fontSize: 11,
+              }}
+            >
+              <div style={{ padding: "4px 8px", color: C.gutterActive, borderBottom: `1px solid ${C.border}` }}>
+                Account suggestions (Tab/Enter to accept)
+              </div>
+              {accountSuggest.matches.map((acct, idx) => (
+                <div key={acct + idx} style={{ padding: "4px 8px", color: C.text, borderBottom: idx === accountSuggest.matches.length - 1 ? "none" : `1px solid ${C.border}` }}>
+                  {acct}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <AccountsSidebar transactions={transactionsForAnalysis} />
       </div>
 
       <ErrorPanel errors={allErrors} warnings={allWarnings} onClickError={goToLine} onAutofix={handleAutofix} panelMode={panelMode} setPanelMode={setPanelMode} />
       {showHotkeys && <HotkeysModal onClose={() => setShowHotkeys(false)} />}
+      {settingsDraft && (
+        <SettingsModal
+          settingsDraft={settingsDraft}
+          onChange={(patch) => setSettingsDraft((prev) => mergeSettings(prev || settings, patch))}
+          onSave={saveSettings}
+          onClose={() => setSettingsDraft(null)}
+        />
+      )}
+      {showFind && (
+        <SmallModal title={showReplace ? "Find & Replace" : "Find"} onClose={() => { setShowFind(false); setShowReplace(false); }}>
+          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
+            <label style={{ fontSize: 12 }}>
+              Find
+              <input
+                value={findQuery}
+                onChange={(e) => setFindQuery(e.target.value)}
+                style={{ width: "100%", marginTop: 4, background: C.bg, color: C.text, border: `1px solid ${C.border}`, borderRadius: 4, padding: "4px 8px", fontFamily: FONT, fontSize: 12 }}
+              />
+            </label>
+            {showReplace && (
+              <label style={{ fontSize: 12 }}>
+                Replace with
+                <input
+                  value={replaceQuery}
+                  onChange={(e) => setReplaceQuery(e.target.value)}
+                  style={{ width: "100%", marginTop: 4, background: C.bg, color: C.text, border: `1px solid ${C.border}`, borderRadius: 4, padding: "4px 8px", fontFamily: FONT, fontSize: 12 }}
+                />
+              </label>
+            )}
+            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+              <button onClick={() => applyFindNext(findQuery)} style={{ background: "transparent", color: C.gutterActive, border: `1px solid ${C.border}`, borderRadius: 4, padding: "5px 10px", fontFamily: FONT, fontSize: 11, cursor: "pointer" }}>Find next</button>
+              {showReplace && <button onClick={applyReplaceCurrent} style={{ background: "transparent", color: C.warning, border: `1px solid ${C.warning}`, borderRadius: 4, padding: "5px 10px", fontFamily: FONT, fontSize: 11, cursor: "pointer" }}>Replace</button>}
+              {showReplace && <button onClick={applyReplaceAll} style={{ background: C.accent, color: "#fff", border: "none", borderRadius: 4, padding: "5px 10px", fontFamily: FONT, fontSize: 11, cursor: "pointer", fontWeight: 600 }}>Replace all</button>}
+            </div>
+          </div>
+        </SmallModal>
+      )}
+      {showGotoLine && (
+        <SmallModal title="Go To Line" onClose={() => setShowGotoLine(false)} width={360}>
+          <div style={{ display: "flex", gap: 8, alignItems: "center" }}>
+            <input
+              value={gotoLineInput}
+              onChange={(e) => setGotoLineInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key === "Enter") jumpToLineFromInput();
+              }}
+              placeholder="Line number"
+              style={{ flex: 1, background: C.bg, color: C.text, border: `1px solid ${C.border}`, borderRadius: 4, padding: "6px 8px", fontFamily: FONT, fontSize: 12 }}
+            />
+            <button onClick={jumpToLineFromInput} style={{ background: C.accent, color: "#fff", border: "none", borderRadius: 4, padding: "6px 10px", fontFamily: FONT, fontSize: 11, cursor: "pointer", fontWeight: 600 }}>Go</button>
+          </div>
+        </SmallModal>
+      )}
+      {backupOffer && (
+        <SmallModal title="Recover Unsaved Backup?" onClose={() => setBackupOffer(null)} width={520}>
+          <div style={{ fontSize: 12, lineHeight: 1.45, marginBottom: 10 }}>
+            A crash backup was found from {new Date(backupOffer.timestamp || Date.now()).toLocaleString()}.
+          </div>
+          <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
+            <button
+              onClick={async () => {
+                setBackupOffer(null);
+                await window.electronAPI?.clearBackup?.();
+              }}
+              style={{ background: "transparent", color: C.gutterActive, border: `1px solid ${C.border}`, borderRadius: 4, padding: "5px 10px", fontFamily: FONT, fontSize: 11, cursor: "pointer" }}
+            >
+              Ignore
+            </button>
+            <button
+              onClick={async () => {
+                const recoveredText = backupOffer.text || "";
+                setText(recoveredText);
+                setBaselineText("");
+                if (!filePathRef.current && backupOffer.filePath) setFilePath(backupOffer.filePath);
+                setBackupOffer(null);
+              }}
+              style={{ background: C.accent, color: "#fff", border: "none", borderRadius: 4, padding: "5px 10px", fontFamily: FONT, fontSize: 11, cursor: "pointer", fontWeight: 600 }}
+            >
+              Restore backup
+            </button>
+          </div>
+        </SmallModal>
+      )}
       <AppDialogModal request={appDialogRequest} onRespond={respondAppDialog} />
     </div>
   );

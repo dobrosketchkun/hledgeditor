@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain, dialog, Menu } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const chokidar = require("chokidar");
+const { DEFAULT_SETTINGS, loadSettings, updateSettings } = require("./settings");
 
 const isDev = !app.isPackaged;
 
@@ -9,6 +10,35 @@ let mainWindow = null;
 let currentFilePath = null;
 let fileWatcher = null;
 let unsavedChanges = false;
+let currentSettings = DEFAULT_SETTINGS;
+
+function getBackupPath() {
+  return path.join(app.getPath("userData"), "unsaved-backup.json");
+}
+
+function readBackup() {
+  const backupPath = getBackupPath();
+  try {
+    if (fs.existsSync(backupPath)) {
+      return JSON.parse(fs.readFileSync(backupPath, "utf-8"));
+    }
+  } catch {}
+  return null;
+}
+
+function writeBackup(payload) {
+  const backupPath = getBackupPath();
+  try {
+    fs.writeFileSync(backupPath, JSON.stringify(payload, null, 2), "utf-8");
+  } catch {}
+}
+
+function clearBackup() {
+  const backupPath = getBackupPath();
+  try {
+    if (fs.existsSync(backupPath)) fs.unlinkSync(backupPath);
+  } catch {}
+}
 
 // ─── Recent files ──────────────────────────────────────────────────
 
@@ -109,6 +139,7 @@ async function newFile() {
   if (!(await confirmUnsaved())) return;
   currentFilePath = null;
   unsavedChanges = false;
+  clearBackup();
   stopWatching();
   updateTitle();
   mainWindow.webContents.send("file-opened", {
@@ -137,6 +168,7 @@ async function openFile(filePath) {
     const content = fs.readFileSync(filePath, "utf-8");
     currentFilePath = filePath;
     unsavedChanges = false;
+    clearBackup();
     updateTitle();
     addRecentFile(filePath);
     watchFile(filePath);
@@ -154,6 +186,7 @@ async function saveFile() {
     stopWatching(); // pause watcher so we don't trigger external-change
     fs.writeFileSync(currentFilePath, content, "utf-8");
     unsavedChanges = false;
+    clearBackup();
     updateTitle();
     watchFile(currentFilePath); // resume
     mainWindow.webContents.send("file-saved", currentFilePath);
@@ -221,6 +254,26 @@ ipcMain.on("window:close", () => {
 ipcMain.handle("window:is-maximized", () => {
   if (!mainWindow || mainWindow.isDestroyed()) return false;
   return mainWindow.isMaximized();
+});
+ipcMain.handle("settings:get", () => currentSettings);
+ipcMain.handle("settings:update", (_, patch) => {
+  currentSettings = updateSettings(patch);
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send("settings-updated", currentSettings);
+  }
+  return currentSettings;
+});
+ipcMain.handle("backup:write", (_, payload) => {
+  writeBackup({
+    timestamp: Date.now(),
+    text: payload?.text || "",
+    filePath: payload?.filePath || null,
+  });
+  return true;
+});
+ipcMain.handle("backup:clear", () => {
+  clearBackup();
+  return true;
 });
 
 function parseIncludeTarget(raw) {
@@ -328,6 +381,7 @@ function createWindow() {
 // ─── App lifecycle ─────────────────────────────────────────────────
 
 app.whenReady().then(() => {
+  currentSettings = loadSettings();
   createWindow();
 
   const envLedgerFile = process.env.LEDGER_FILE;
@@ -343,6 +397,13 @@ app.whenReady().then(() => {
     // Wait for renderer to be ready
     mainWindow.webContents.once("did-finish-load", () => {
       openFile(path.resolve(fileArg));
+    });
+  }
+
+  const backup = readBackup();
+  if (backup && typeof backup.text === "string" && backup.text.length > 0) {
+    mainWindow.webContents.once("did-finish-load", () => {
+      mainWindow.webContents.send("backup-available", backup);
     });
   }
 });
