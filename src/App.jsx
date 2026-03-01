@@ -49,6 +49,28 @@ const DEFAULT_SETTINGS = {
     "app.settings": "Ctrl+,",
   },
 };
+const COMMAND_LABELS = {
+  "file.open": "Open file",
+  "file.save": "Save",
+  "file.saveAs": "Save as",
+  "file.new": "New file",
+  "help.hotkeys": "Open hotkeys help",
+  "editor.find": "Find",
+  "editor.replace": "Replace",
+  "editor.gotoLine": "Go to line",
+  "app.settings": "Open settings",
+};
+const COMMAND_ORDER = [
+  "file.open",
+  "file.save",
+  "file.saveAs",
+  "file.new",
+  "editor.find",
+  "editor.replace",
+  "editor.gotoLine",
+  "app.settings",
+  "help.hotkeys",
+];
 
 function mergeSettings(base, patch) {
   return {
@@ -73,6 +95,8 @@ function normalizeShortcut(input) {
 }
 
 function eventToShortcut(e) {
+  const modifierKeys = new Set(["Control", "Shift", "Alt", "Meta"]);
+  if (modifierKeys.has(e.key)) return "";
   const keyRaw = e.key.length === 1 ? e.key.toUpperCase() : e.key;
   let key = keyRaw;
   if (key === " ") key = "Space";
@@ -89,6 +113,15 @@ function eventToShortcut(e) {
   if (e.shiftKey) parts.push("Shift");
   parts.push(key);
   return normalizeShortcut(parts.join("+"));
+}
+
+function formatShortcut(shortcut) {
+  if (!shortcut) return "Unassigned";
+  return shortcut.replaceAll("Meta", "Cmd");
+}
+
+function escapeRegexLiteral(value) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
 }
 
 /* ─── Error Panel ────────────────────────────────────────────────── */
@@ -213,15 +246,9 @@ function ExternalChangeBanner({ onReload, onDismiss }) {
 
 /* ─── Hotkeys Modal ──────────────────────────────────────────────── */
 
-function HotkeysModal({ onClose }) {
-  const hotkeys = [
-    ["Ctrl/Cmd+O", "Open file"],
-    ["Ctrl/Cmd+S", "Save"],
-    ["Ctrl/Cmd+Shift+S", "Save as"],
-    ["Ctrl/Cmd+N", "New file"],
-    ["F1", "Open hotkeys help"],
-    ["Esc", "Close modal/dialog"],
-  ];
+function HotkeysModal({ onClose, shortcuts }) {
+  const hotkeys = COMMAND_ORDER.map((cmd) => [formatShortcut(shortcuts?.[cmd] || ""), COMMAND_LABELS[cmd] || cmd]);
+  hotkeys.push(["Esc", "Close current modal/dialog"]);
 
   return (
     <div
@@ -364,9 +391,11 @@ function AppDialogModal({ request, onRespond }) {
   );
 }
 
-function SettingsModal({ settingsDraft, onChange, onSave, onClose }) {
+function SettingsModal({ settingsDraft, onChange, onSave, onClose, onStartRecording, recordingCommand, recordingConflict }) {
   if (!settingsDraft) return null;
-  const shortcutEntries = Object.entries(settingsDraft.shortcuts || {});
+  const shortcutEntries = COMMAND_ORDER
+    .map((cmd) => [cmd, settingsDraft.shortcuts?.[cmd] || ""])
+    .filter(([cmd]) => COMMAND_LABELS[cmd]);
 
   return (
     <div
@@ -476,15 +505,35 @@ function SettingsModal({ settingsDraft, onChange, onSave, onClose }) {
           </div>
 
           <div style={{ fontSize: 11, color: C.gutterActive, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Shortcuts</div>
+          <div style={{ marginBottom: 6, fontSize: 11, color: C.gutterText }}>
+            Click Record and press your key combination.
+          </div>
+          {recordingConflict && (
+            <div style={{ marginBottom: 6, padding: "6px 8px", borderRadius: 4, border: `1px solid ${C.warning}`, color: C.warning, fontSize: 11 }}>
+              {recordingConflict}
+            </div>
+          )}
           <div style={{ maxHeight: 220, overflowY: "auto", border: `1px solid ${C.border}`, borderRadius: 6 }}>
             {shortcutEntries.map(([command, shortcut]) => (
               <div key={command} style={{ display: "flex", alignItems: "center", padding: "6px 8px", borderBottom: `1px solid ${C.border}`, gap: 8 }}>
-                <span style={{ flex: 1, fontSize: 12 }}>{command}</span>
-                <input
-                  value={shortcut}
-                  onChange={(e) => onChange({ shortcuts: { [command]: e.target.value } })}
-                  style={{ width: 140, background: C.bg, color: C.text, border: `1px solid ${C.border}`, borderRadius: 4, padding: "3px 6px", fontFamily: FONT, fontSize: 11 }}
-                />
+                <span style={{ flex: 1, fontSize: 12 }}>{COMMAND_LABELS[command] || command}</span>
+                <span style={{ width: 150, fontSize: 11, color: C.accent, textAlign: "right" }}>{formatShortcut(shortcut)}</span>
+                <button
+                  onClick={() => onStartRecording(command)}
+                  style={{
+                    minWidth: 90,
+                    background: recordingCommand === command ? C.accent : "transparent",
+                    color: recordingCommand === command ? "#fff" : C.gutterActive,
+                    border: `1px solid ${recordingCommand === command ? C.accent : C.border}`,
+                    borderRadius: 4,
+                    padding: "4px 8px",
+                    fontFamily: FONT,
+                    fontSize: 11,
+                    cursor: "pointer",
+                  }}
+                >
+                  {recordingCommand === command ? "Press keys..." : "Record"}
+                </button>
               </div>
             ))}
           </div>
@@ -629,10 +678,13 @@ export default function App() {
   const [showGotoLine, setShowGotoLine] = useState(false);
   const [findQuery, setFindQuery] = useState("");
   const [replaceQuery, setReplaceQuery] = useState("");
+  const [findUseRegex, setFindUseRegex] = useState(false);
   const [gotoLineInput, setGotoLineInput] = useState("");
   const [backupOffer, setBackupOffer] = useState(null);
   const [accountSuggest, setAccountSuggest] = useState(null);
   const [appDialogRequest, setAppDialogRequest] = useState(null);
+  const [recordingCommand, setRecordingCommand] = useState(null);
+  const [recordingConflict, setRecordingConflict] = useState("");
   const [isMaximized, setIsMaximized] = useState(false);
   const textareaRef = useRef(null);
   const highlightRef = useRef(null);
@@ -714,48 +766,69 @@ export default function App() {
     await window.electronAPI?.updateSettings?.(merged);
   }, [settingsDraft, settings]);
 
+  const getSearchRegex = useCallback((query, global = true) => {
+    if (!query) return { regex: null, error: "" };
+    try {
+      const source = findUseRegex ? query : escapeRegexLiteral(query);
+      const flags = `${global ? "g" : ""}i`;
+      return { regex: new RegExp(source, flags), error: "" };
+    } catch (err) {
+      return { regex: null, error: err?.message || "Invalid regex pattern" };
+    }
+  }, [findUseRegex]);
+
   const applyFindNext = useCallback((query) => {
     if (!query || !textareaRef.current) return;
+    const { regex } = getSearchRegex(query, true);
+    if (!regex) return;
     const area = textareaRef.current;
     const content = textRef.current;
     const from = area.selectionEnd || 0;
-    const direct = content.toLowerCase().indexOf(query.toLowerCase(), from);
-    const idx = direct >= 0 ? direct : content.toLowerCase().indexOf(query.toLowerCase(), 0);
-    if (idx >= 0) {
+    regex.lastIndex = from;
+    let match = regex.exec(content);
+    if (!match) {
+      regex.lastIndex = 0;
+      match = regex.exec(content);
+    }
+    if (match && match[0].length > 0) {
+      const idx = match.index;
       area.focus();
       area.selectionStart = idx;
-      area.selectionEnd = idx + query.length;
+      area.selectionEnd = idx + match[0].length;
       setCursorLine(content.slice(0, idx).split("\n").length - 1);
     }
-  }, []);
+  }, [getSearchRegex]);
 
   const applyReplaceCurrent = useCallback(() => {
     if (!findQuery || !textareaRef.current) return;
+    const { regex } = getSearchRegex(findQuery, false);
+    if (!regex) return;
     const area = textareaRef.current;
     const content = textRef.current;
     const s = area.selectionStart;
     const e = area.selectionEnd;
     const selected = content.slice(s, e);
-    if (selected.toLowerCase() === findQuery.toLowerCase()) {
-      const next = content.slice(0, s) + replaceQuery + content.slice(e);
+    if (selected && regex.test(selected)) {
+      const replaced = selected.replace(regex, replaceQuery);
+      const next = content.slice(0, s) + replaced + content.slice(e);
       handleTextChange(next);
       requestAnimationFrame(() => {
         if (textareaRef.current) {
           textareaRef.current.selectionStart = s;
-          textareaRef.current.selectionEnd = s + replaceQuery.length;
+          textareaRef.current.selectionEnd = s + replaced.length;
         }
       });
     } else {
       applyFindNext(findQuery);
     }
-  }, [findQuery, replaceQuery, handleTextChange, applyFindNext]);
+  }, [findQuery, replaceQuery, handleTextChange, applyFindNext, getSearchRegex]);
 
   const applyReplaceAll = useCallback(() => {
     if (!findQuery) return;
-    const escaped = findQuery.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
-    const regex = new RegExp(escaped, "gi");
+    const { regex } = getSearchRegex(findQuery, true);
+    if (!regex) return;
     handleTextChange(textRef.current.replace(regex, replaceQuery));
-  }, [findQuery, replaceQuery, handleTextChange]);
+  }, [findQuery, replaceQuery, handleTextChange, getSearchRegex]);
 
   const runCommand = useCallback((command) => {
     if (command === "file.open") window.electronAPI?.openFile?.();
@@ -774,6 +847,36 @@ export default function App() {
   }, [openSettings]);
 
   useEffect(() => {
+    if (!settingsDraft || !recordingCommand) return undefined;
+    const onCapture = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (e.key === "Escape") {
+        setRecordingCommand(null);
+        setRecordingConflict("");
+        return;
+      }
+      const combo = eventToShortcut(e);
+      if (!combo) return;
+      const shortcuts = settingsDraft.shortcuts || {};
+      const conflictCmd = Object.keys(shortcuts).find(
+        (cmd) => cmd !== recordingCommand && normalizeShortcut(shortcuts[cmd]) === combo
+      );
+      if (conflictCmd) {
+        setRecordingConflict(
+          `"${formatShortcut(combo)}" is already assigned to "${COMMAND_LABELS[conflictCmd] || conflictCmd}".`
+        );
+        return;
+      }
+      setRecordingConflict("");
+      setSettingsDraft((prev) => mergeSettings(prev || settings, { shortcuts: { [recordingCommand]: combo } }));
+      setRecordingCommand(null);
+    };
+    window.addEventListener("keydown", onCapture, true);
+    return () => window.removeEventListener("keydown", onCapture, true);
+  }, [settingsDraft, recordingCommand, settings]);
+
+  useEffect(() => {
     if (!window.electronAPI) return undefined;
     const onKey = (e) => {
       if (e.key === "Escape" && showHotkeys) {
@@ -781,9 +884,15 @@ export default function App() {
         return;
       }
       if (e.key === "Escape" && settingsDraft) {
-        setSettingsDraft(null);
+        if (recordingCommand) {
+          setRecordingCommand(null);
+          setRecordingConflict("");
+        } else {
+          setSettingsDraft(null);
+        }
         return;
       }
+      if (settingsDraft) return;
       if (e.key === "Escape" && (showFind || showGotoLine)) {
         setShowFind(false);
         setShowReplace(false);
@@ -808,7 +917,7 @@ export default function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [showHotkeys, settingsDraft, showFind, showGotoLine, appDialogRequest, respondAppDialog, settings, runCommand]);
+  }, [showHotkeys, settingsDraft, recordingCommand, showFind, showGotoLine, appDialogRequest, respondAppDialog, settings, runCommand]);
 
   useEffect(() => {
     if (!window.electronAPI) return undefined;
@@ -995,6 +1104,10 @@ export default function App() {
   const fontSize = settings.theme.fontSize;
   const activeTheme = getTheme(settings.theme.id);
   const cssVars = themeCssVars(activeTheme);
+  const searchRegexError = useMemo(() => {
+    if (!findUseRegex || !findQuery) return "";
+    return getSearchRegex(findQuery, true).error || "";
+  }, [findUseRegex, findQuery, getSearchRegex]);
 
   return (
     <div style={{ ...cssVars, height: "100vh", display: "flex", flexDirection: "column", background: C.bg, color: C.text }}>
@@ -1159,13 +1272,23 @@ export default function App() {
       </div>
 
       <ErrorPanel errors={allErrors} warnings={allWarnings} onClickError={goToLine} onAutofix={handleAutofix} panelMode={panelMode} setPanelMode={setPanelMode} />
-      {showHotkeys && <HotkeysModal onClose={() => setShowHotkeys(false)} />}
+      {showHotkeys && <HotkeysModal onClose={() => setShowHotkeys(false)} shortcuts={settings.shortcuts} />}
       {settingsDraft && (
         <SettingsModal
           settingsDraft={settingsDraft}
           onChange={(patch) => setSettingsDraft((prev) => mergeSettings(prev || settings, patch))}
           onSave={saveSettings}
-          onClose={() => setSettingsDraft(null)}
+          onClose={() => {
+            setSettingsDraft(null);
+            setRecordingCommand(null);
+            setRecordingConflict("");
+          }}
+          onStartRecording={(command) => {
+            setRecordingConflict("");
+            setRecordingCommand(command);
+          }}
+          recordingCommand={recordingCommand}
+          recordingConflict={recordingConflict}
         />
       )}
       {showFind && (
@@ -1179,6 +1302,20 @@ export default function App() {
                 style={{ width: "100%", marginTop: 4, background: C.bg, color: C.text, border: `1px solid ${C.border}`, borderRadius: 4, padding: "4px 8px", fontFamily: FONT, fontSize: 12 }}
               />
             </label>
+            <label style={{ fontSize: 12, color: C.gutterActive }}>
+              <input
+                type="checkbox"
+                checked={findUseRegex}
+                onChange={(e) => setFindUseRegex(e.target.checked)}
+                style={{ marginRight: 6 }}
+              />
+              Regex
+            </label>
+            {searchRegexError && (
+              <div style={{ fontSize: 11, color: C.error, border: `1px solid ${C.error}`, borderRadius: 4, padding: "5px 8px" }}>
+                Invalid regex: {searchRegexError}
+              </div>
+            )}
             {showReplace && (
               <label style={{ fontSize: 12 }}>
                 Replace with
@@ -1190,9 +1327,9 @@ export default function App() {
               </label>
             )}
             <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-              <button onClick={() => applyFindNext(findQuery)} style={{ background: "transparent", color: C.gutterActive, border: `1px solid ${C.border}`, borderRadius: 4, padding: "5px 10px", fontFamily: FONT, fontSize: 11, cursor: "pointer" }}>Find next</button>
-              {showReplace && <button onClick={applyReplaceCurrent} style={{ background: "transparent", color: C.warning, border: `1px solid ${C.warning}`, borderRadius: 4, padding: "5px 10px", fontFamily: FONT, fontSize: 11, cursor: "pointer" }}>Replace</button>}
-              {showReplace && <button onClick={applyReplaceAll} style={{ background: C.accent, color: "#fff", border: "none", borderRadius: 4, padding: "5px 10px", fontFamily: FONT, fontSize: 11, cursor: "pointer", fontWeight: 600 }}>Replace all</button>}
+              <button disabled={!!searchRegexError} onClick={() => applyFindNext(findQuery)} style={{ background: "transparent", color: C.gutterActive, border: `1px solid ${C.border}`, borderRadius: 4, padding: "5px 10px", fontFamily: FONT, fontSize: 11, cursor: searchRegexError ? "not-allowed" : "pointer", opacity: searchRegexError ? 0.55 : 1 }}>Find next</button>
+              {showReplace && <button disabled={!!searchRegexError} onClick={applyReplaceCurrent} style={{ background: "transparent", color: C.warning, border: `1px solid ${C.warning}`, borderRadius: 4, padding: "5px 10px", fontFamily: FONT, fontSize: 11, cursor: searchRegexError ? "not-allowed" : "pointer", opacity: searchRegexError ? 0.55 : 1 }}>Replace</button>}
+              {showReplace && <button disabled={!!searchRegexError} onClick={applyReplaceAll} style={{ background: C.accent, color: "#fff", border: "none", borderRadius: 4, padding: "5px 10px", fontFamily: FONT, fontSize: 11, cursor: searchRegexError ? "not-allowed" : "pointer", fontWeight: 600, opacity: searchRegexError ? 0.55 : 1 }}>Replace all</button>}
             </div>
           </div>
         </SmallModal>
