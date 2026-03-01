@@ -14,10 +14,16 @@ contextBridge.exposeInMainWorld("electronAPI", {
   onRequestContent: (callback) => {
     ipcRenderer.on("request-content", (_, responseChannel) => callback(responseChannel));
   },
+  onAppDialogRequest: (callback) => {
+    ipcRenderer.on("app-dialog-request", (_, payload) => callback(payload));
+  },
 
   // Renderer → Main
   sendContent: (channel, content) => {
     ipcRenderer.send(channel, content);
+  },
+  respondDialog: (channel, result) => {
+    ipcRenderer.send(channel, result);
   },
   notifyContentChanged: () => {
     ipcRenderer.send("content-changed");
@@ -28,4 +34,13 @@ contextBridge.exposeInMainWorld("electronAPI", {
 
   // Renderer → Main (invoke/handle pattern)
   getRecentFiles: () => ipcRenderer.invoke("get-recent-files"),
+  newFile: () => ipcRenderer.invoke("file:new"),
+  openFile: () => ipcRenderer.invoke("file:open"),
+  saveFile: () => ipcRenderer.invoke("file:save"),
+  saveFileAs: () => ipcRenderer.invoke("file:save-as"),
+  resolveIncludes: (content, filePath) => ipcRenderer.invoke("resolve-includes", { content, filePath }),
+  minimizeWindow: () => ipcRenderer.send("window:minimize"),
+  toggleMaximizeWindow: () => ipcRenderer.send("window:toggle-maximize"),
+  closeWindow: () => ipcRenderer.send("window:close"),
+  isWindowMaximized: () => ipcRenderer.invoke("window:is-maximized"),
 });

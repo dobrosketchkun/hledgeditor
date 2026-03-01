@@ -1,6 +1,6 @@
 /* ─── hledger journal parser ────────────────────────────────────── */
 
-export function parseJournal(text) {
+export function parseJournal(text, source = "root") {
   const lines = text.split("\n");
   const transactions = [];
   let current = null;
@@ -25,6 +25,7 @@ export function parseJournal(text) {
       }
       const match = line.match(/^(\d{4}[-/.]\d{2}[-/.]\d{2})\s+(.*?)(\s+;.*)?$/);
       current = {
+        source,
         lineStart: i,
         lineEnd: i,
         dateStr: match ? match[1] : line.split(/\s/)[0],
@@ -37,13 +38,13 @@ export function parseJournal(text) {
       if (!match) {
         const roughDate = line.split(/\s/)[0];
         if (!/^\d{4}[-/.]\d{2}[-/.]\d{2}$/.test(roughDate)) {
-          current.errors.push({ line: i, msg: `Invalid date format: "${roughDate}". Use YYYY-MM-DD.` });
+          current.errors.push({ line: i, msg: `Invalid date format: "${roughDate}". Use YYYY-MM-DD.`, source });
         }
       } else {
         const parts = match[1].split(/[-/.]/);
         const d = new Date(+parts[0], +parts[1] - 1, +parts[2]);
         if (isNaN(d.getTime()) || d.getMonth() !== +parts[1] - 1 || d.getDate() !== +parts[2]) {
-          current.errors.push({ line: i, msg: `Invalid date: "${match[1]}".` });
+          current.errors.push({ line: i, msg: `Invalid date: "${match[1]}".`, source });
         }
       }
       continue;
@@ -79,17 +80,17 @@ export function parseJournal(text) {
 
       const leadingSpaces = line.match(/^(\s*)/)[1].length;
       if (leadingSpaces < 2) {
-        current.errors.push({ line: i, msg: `Posting must be indented at least 2 spaces.` });
+        current.errors.push({ line: i, msg: `Posting must be indented at least 2 spaces.`, source });
       }
 
       if (hasAmount) {
         const sepMatch = noComment.match(/^(.+?)(\s+)([-]?[$€£¥₹₪]?[\d,]+\.?\d*)$/);
         if (sepMatch && sepMatch[2].length < 2) {
-          current.errors.push({ line: i, msg: `Need at least 2 spaces between account name and amount.` });
+          current.errors.push({ line: i, msg: `Need at least 2 spaces between account name and amount.`, source });
         }
       }
 
-      current.postings.push({ line: i, account: account || noComment, amount, currency, hasAmount });
+      current.postings.push({ line: i, account: account || noComment, amount, currency, hasAmount, source });
       current.lineEnd = i;
       continue;
     }
@@ -107,16 +108,20 @@ export function parseJournal(text) {
 
   for (const tx of transactions) {
     if (tx.postings.length < 2) {
-      tx.errors.push({ line: tx.lineStart, msg: `Transaction needs at least 2 postings (has ${tx.postings.length}).` });
+      tx.errors.push({ line: tx.lineStart, msg: `Transaction needs at least 2 postings (has ${tx.postings.length}).`, source: tx.source });
     }
     const inferredCount = tx.postings.filter((p) => !p.hasAmount).length;
     if (inferredCount > 1) {
-      tx.errors.push({ line: tx.lineStart, msg: `Only one posting can have an inferred (blank) amount. Found ${inferredCount}.` });
+      tx.errors.push({ line: tx.lineStart, msg: `Only one posting can have an inferred (blank) amount. Found ${inferredCount}.`, source: tx.source });
     }
     if (inferredCount === 0 && tx.postings.length >= 2) {
       const sum = tx.postings.reduce((s, p) => s + (p.amount || 0), 0);
       if (Math.abs(sum) > 0.005) {
-        tx.errors.push({ line: tx.lineStart, msg: `Transaction doesn't balance. Off by ${sum > 0 ? "+" : ""}${sum.toFixed(2)}.` });
+        tx.errors.push({
+          line: tx.lineStart,
+          msg: `Transaction doesn't balance. Off by ${sum > 0 ? "+" : ""}${sum.toFixed(2)}.`,
+          source: tx.source,
+        });
       }
     }
   }
@@ -172,6 +177,7 @@ export function findTypoWarnings(transactions) {
                 type: "typo",
                 from: acct,
                 to: closest,
+                source: p.source || tx.source || "root",
               });
             }
           }
@@ -202,6 +208,20 @@ export function highlightLine(line, lineIdx, errorLines, warningLines) {
       return { segments: segs, hasError, hasWarning };
     }
     return { segments: [{ text: line, cls: "dt" }], hasError, hasWarning };
+  }
+
+  if (/^\s*include\s+/.test(line) && !line.trim().startsWith(";")) {
+    const m = line.match(/^(\s*include\s+)(.*)$/);
+    if (m) {
+      return {
+        segments: [
+          { text: m[1], cls: "dt" },
+          { text: m[2], cls: "ac" },
+        ],
+        hasError,
+        hasWarning,
+      };
+    }
   }
 
   if (/^\s/.test(line) && line.trim() !== "") {

@@ -30,21 +30,6 @@ const C = {
 
 const FONT = "'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace";
 
-const STARTER = `; hledger journal
-; Edit this file or open a .journal file via File > Open
-
-2026-03-01 Opening balances
-    assets:bank:checking              $5,200.00
-    assets:bank:savings              $12,000.00
-    assets:cash                         $340.00
-    liabilities:credit card           $-1,850.00
-    equity:opening balances
-
-2026-03-02 Grocery store
-    expenses:food:groceries             $67.30
-    assets:bank:checking
-`;
-
 /* ─── Error Panel ────────────────────────────────────────────────── */
 
 function ErrorPanel({ errors, warnings, onClickError, onAutofix, panelMode, setPanelMode }) {
@@ -165,12 +150,238 @@ function ExternalChangeBanner({ onReload, onDismiss }) {
   );
 }
 
+/* ─── Hotkeys Modal ──────────────────────────────────────────────── */
+
+function HotkeysModal({ onClose }) {
+  const hotkeys = [
+    ["Ctrl/Cmd+O", "Open file"],
+    ["Ctrl/Cmd+S", "Save"],
+    ["Ctrl/Cmd+Shift+S", "Save as"],
+    ["Ctrl/Cmd+N", "New file"],
+    ["F1", "Open hotkeys help"],
+    ["Esc", "Close modal/dialog"],
+  ];
+
+  return (
+    <div
+      onClick={onClose}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(8, 10, 14, 0.55)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 30,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: 460,
+          maxWidth: "90vw",
+          background: C.panelBg,
+          border: `1px solid ${C.border}`,
+          borderRadius: 8,
+          boxShadow: "0 14px 40px rgba(0,0,0,0.45)",
+          fontFamily: FONT,
+        }}
+      >
+        <div
+          style={{
+            padding: "12px 14px",
+            borderBottom: `1px solid ${C.border}`,
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+          }}
+        >
+          <span style={{ color: C.accent, fontWeight: 700 }}>Hotkeys</span>
+          <div style={{ flex: 1 }} />
+          <button
+            onClick={onClose}
+            style={{
+              background: "transparent",
+              color: C.gutterActive,
+              border: `1px solid ${C.border}`,
+              borderRadius: 4,
+              fontFamily: FONT,
+              fontSize: 11,
+              padding: "2px 8px",
+              cursor: "pointer",
+            }}
+          >
+            Close
+          </button>
+        </div>
+        <div style={{ padding: "10px 14px 12px", color: C.text, fontSize: 12 }}>
+          {hotkeys.map(([combo, desc]) => (
+            <div key={combo} style={{ display: "flex", alignItems: "center", padding: "6px 0", borderBottom: `1px solid ${C.border}` }}>
+              <span style={{ color: C.accent, width: 150, flexShrink: 0 }}>{combo}</span>
+              <span>{desc}</span>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── App Dialog Modal ───────────────────────────────────────────── */
+
+function AppDialogModal({ request, onRespond }) {
+  if (!request) return null;
+  const { kind, payload } = request;
+
+  const title = payload?.title || (kind === "error" ? "Error" : "Confirm");
+  const message = payload?.message || "";
+  const isError = kind === "error";
+
+  return (
+    <div
+      onClick={() => onRespond(isError ? "ok" : "cancel")}
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: "rgba(8, 10, 14, 0.55)",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        zIndex: 40,
+      }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{
+          width: 460,
+          maxWidth: "90vw",
+          background: C.panelBg,
+          border: `1px solid ${C.border}`,
+          borderRadius: 8,
+          boxShadow: "0 14px 40px rgba(0,0,0,0.45)",
+          fontFamily: FONT,
+          color: C.text,
+        }}
+      >
+        <div style={{ padding: "12px 14px", borderBottom: `1px solid ${C.border}`, fontWeight: 700, color: isError ? C.error : C.warning }}>
+          {title}
+        </div>
+        <div style={{ padding: "12px 14px", fontSize: 12, lineHeight: 1.45, whiteSpace: "pre-wrap" }}>{message}</div>
+        <div style={{ padding: "10px 14px 14px", display: "flex", justifyContent: "flex-end", gap: 8 }}>
+          {isError ? (
+            <button
+              onClick={() => onRespond("ok")}
+              style={{ background: C.accent, color: "#fff", border: "none", borderRadius: 4, padding: "5px 12px", fontFamily: FONT, fontSize: 11, cursor: "pointer", fontWeight: 600 }}
+            >
+              OK
+            </button>
+          ) : (
+            <>
+              <button
+                onClick={() => onRespond("save")}
+                style={{ background: C.accent, color: "#fff", border: "none", borderRadius: 4, padding: "5px 12px", fontFamily: FONT, fontSize: 11, cursor: "pointer", fontWeight: 600 }}
+              >
+                Save
+              </button>
+              <button
+                onClick={() => onRespond("discard")}
+                style={{ background: "transparent", color: C.warning, border: `1px solid ${C.warning}66`, borderRadius: 4, padding: "5px 12px", fontFamily: FONT, fontSize: 11, cursor: "pointer", fontWeight: 600 }}
+              >
+                Don&apos;t Save
+              </button>
+              <button
+                onClick={() => onRespond("cancel")}
+                style={{ background: "transparent", color: C.gutterActive, border: `1px solid ${C.border}`, borderRadius: 4, padding: "5px 12px", fontFamily: FONT, fontSize: 11, cursor: "pointer" }}
+              >
+                Cancel
+              </button>
+            </>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ─── Custom Title Bar ───────────────────────────────────────────── */
+
+function TitleBar({ filePath, onHelp, isMaximized, onMinimize, onToggleMaximize, onClose }) {
+  const displayPath = filePath || "Untitled";
+  return (
+    <div
+      onDoubleClick={onToggleMaximize}
+      style={{
+        height: 34,
+        background: C.panelBg,
+        borderBottom: `1px solid ${C.border}`,
+        display: "flex",
+        alignItems: "center",
+        paddingLeft: 10,
+        fontFamily: FONT,
+        WebkitAppRegion: "drag",
+        userSelect: "none",
+        flexShrink: 0,
+      }}
+    >
+      <span style={{ color: C.accent, fontSize: 11, fontWeight: 700, letterSpacing: "0.04em" }}>hledger</span>
+      <span style={{ color: C.gutterText, fontSize: 11, marginLeft: 8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "45vw" }}>
+        {displayPath}
+      </span>
+      <div style={{ flex: 1 }} />
+      <button
+        onClick={onHelp}
+        style={{ WebkitAppRegion: "no-drag", width: 24, height: 24, marginRight: 6, borderRadius: 4, border: `1px solid ${C.border}`, background: "transparent", color: C.gutterActive, fontFamily: FONT, fontWeight: 700, cursor: "pointer", fontSize: 12 }}
+        title="Hotkeys"
+      >
+        ?
+      </button>
+      <button
+        onClick={onMinimize}
+        style={{ WebkitAppRegion: "no-drag", width: 34, height: 28, border: "none", background: "transparent", color: C.gutterActive, cursor: "pointer", fontSize: 12 }}
+        title="Minimize"
+      >
+        _
+      </button>
+      <button
+        onClick={onToggleMaximize}
+        style={{ WebkitAppRegion: "no-drag", width: 34, height: 28, border: "none", background: "transparent", color: C.gutterActive, cursor: "pointer", fontSize: 12 }}
+        title={isMaximized ? "Restore" : "Maximize"}
+      >
+        {isMaximized ? "❐" : "□"}
+      </button>
+      <button
+        onClick={onClose}
+        style={{ WebkitAppRegion: "no-drag", width: 40, height: 28, border: "none", background: "transparent", color: C.error, cursor: "pointer", fontSize: 12 }}
+        title="Close"
+      >
+        X
+      </button>
+    </div>
+  );
+}
+
+function computeDirtyLines(currentText, baselineText) {
+  const curr = currentText.split("\n");
+  const base = baselineText.split("\n");
+  const max = Math.max(curr.length, base.length);
+  const dirty = new Set();
+  for (let i = 0; i < max; i++) {
+    if (curr[i] !== base[i] && i < curr.length) dirty.add(i);
+  }
+  return dirty;
+}
+
 /* ─── Main Editor ────────────────────────────────────────────────── */
 
 export default function App() {
-  const [text, setText] = useState(STARTER);
+  const [text, setText] = useState("");
   const [filePath, setFilePath] = useState(null);
+  const [baselineText, setBaselineText] = useState("");
+  const [includedFiles, setIncludedFiles] = useState([]);
   const [showExternalChange, setShowExternalChange] = useState(false);
+  const [showHotkeys, setShowHotkeys] = useState(false);
+  const [appDialogRequest, setAppDialogRequest] = useState(null);
+  const [isMaximized, setIsMaximized] = useState(false);
   const textareaRef = useRef(null);
   const highlightRef = useRef(null);
   const gutterRef = useRef(null);
@@ -191,11 +402,13 @@ export default function App() {
     api.onFileOpened(({ content, filePath: fp }) => {
       setText(content);
       setFilePath(fp);
+      setBaselineText(content);
       setShowExternalChange(false);
     });
 
     api.onFileSaved((fp) => {
       setFilePath(fp);
+      setBaselineText(textRef.current);
     });
 
     api.onFileChangedExternally(() => {
@@ -204,6 +417,18 @@ export default function App() {
 
     api.onRequestContent((responseChannel) => {
       api.sendContent(responseChannel, textRef.current);
+    });
+    api.onAppDialogRequest((request) => {
+      setAppDialogRequest(request || null);
+    });
+
+    api.isWindowMaximized?.().then((val) => setIsMaximized(Boolean(val)));
+  }, []);
+
+  const respondAppDialog = useCallback((result) => {
+    setAppDialogRequest((prev) => {
+      if (prev?.responseChannel) window.electronAPI?.respondDialog?.(prev.responseChannel, result);
+      return null;
     });
   }, []);
 
@@ -214,14 +439,88 @@ export default function App() {
     }
   }, []);
 
+  useEffect(() => {
+    if (!window.electronAPI) return undefined;
+    const onKey = (e) => {
+      const mod = e.ctrlKey || e.metaKey;
+      if (e.key === "F1") {
+        e.preventDefault();
+        setShowHotkeys(true);
+        return;
+      }
+      if (e.key === "Escape" && showHotkeys) {
+        setShowHotkeys(false);
+        return;
+      }
+      if (e.key === "Escape" && appDialogRequest) {
+        e.preventDefault();
+        respondAppDialog(appDialogRequest.kind === "error" ? "ok" : "cancel");
+        return;
+      }
+      if (!mod) return;
+
+      const k = e.key.toLowerCase();
+      if (k === "o") {
+        e.preventDefault();
+        window.electronAPI.openFile?.();
+      } else if (k === "n") {
+        e.preventDefault();
+        window.electronAPI.newFile?.();
+      } else if (k === "s" && e.shiftKey) {
+        e.preventDefault();
+        window.electronAPI.saveFileAs?.();
+      } else if (k === "s") {
+        e.preventDefault();
+        window.electronAPI.saveFile?.();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [showHotkeys, appDialogRequest, respondAppDialog]);
+
+  useEffect(() => {
+    if (!window.electronAPI || !filePath) {
+      setIncludedFiles([]);
+      return undefined;
+    }
+
+    let cancelled = false;
+    const timer = setTimeout(async () => {
+      try {
+        const files = await window.electronAPI.resolveIncludes?.(text, filePath);
+        if (!cancelled) setIncludedFiles(Array.isArray(files) ? files : []);
+      } catch {
+        if (!cancelled) setIncludedFiles([]);
+      }
+    }, 220);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+    };
+  }, [text, filePath]);
+
   // ─── Parse ─────────────────────────────────────────────────────
   const lines = text.split("\n");
-  const transactions = useMemo(() => parseJournal(text), [text]);
-  const typoWarnings = useMemo(() => findTypoWarnings(transactions), [transactions]);
+  const transactionsRoot = useMemo(() => parseJournal(text, "root"), [text]);
+  const transactionsIncluded = useMemo(
+    () => includedFiles.flatMap((f) => parseJournal(f.content || "", f.filePath || "include")),
+    [includedFiles]
+  );
+  const transactionsForAnalysis = useMemo(
+    () => [...transactionsRoot, ...transactionsIncluded],
+    [transactionsRoot, transactionsIncluded]
+  );
+  const typoWarnings = useMemo(() => findTypoWarnings(transactionsForAnalysis), [transactionsForAnalysis]);
+  const rootTypoWarnings = useMemo(
+    () => typoWarnings.filter((w) => (w.source || "root") === "root"),
+    [typoWarnings]
+  );
+  const dirtyLines = useMemo(() => computeDirtyLines(text, baselineText), [text, baselineText]);
 
   const allErrors = [];
-  const allWarnings = [...typoWarnings];
-  for (const tx of transactions) {
+  const allWarnings = [...rootTypoWarnings];
+  for (const tx of transactionsRoot) {
     allErrors.push(...tx.errors);
     allWarnings.push(...tx.warnings);
   }
@@ -294,13 +593,13 @@ export default function App() {
         .seg-cm { color: ${C.comment}; font-style: italic; }
         .line-error { background: ${C.errorBg}; }
         .line-warning { background: ${C.warningBg}; }
+        .textarea-editor::selection { background: rgba(97,175,239,0.30); color: #dbe9ff; }
         @keyframes line-flash-anim {
           0% { background: rgba(97,175,239,0.18); box-shadow: inset 3px 0 0 ${C.accent}; }
           55% { background: rgba(97,175,239,0.18); box-shadow: inset 3px 0 0 ${C.accent}; }
           100% { background: transparent; box-shadow: inset 3px 0 0 transparent; }
         }
         .line-flash { animation: line-flash-anim 1.5s ease-out forwards; }
-        textarea::selection { background: ${C.selection}; }
       `}</style>
 
       {/* External change banner */}
@@ -311,28 +610,26 @@ export default function App() {
         />
       )}
 
-      {/* Top bar — only shown when NOT in Electron (Electron has its own title bar + menu) */}
-      {!window.electronAPI && (
-        <div style={{ height: 40, background: C.panelBg, borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", padding: "0 16px", gap: 12, flexShrink: 0 }}>
-          <span style={{ fontFamily: FONT, fontSize: 12, fontWeight: 700, color: C.accent, letterSpacing: "0.04em" }}>hledger</span>
-          <span style={{ fontFamily: FONT, fontSize: 12, color: C.gutterText }}>journal editor</span>
+      {window.electronAPI ? (
+        <TitleBar
+          filePath={filePath}
+          onHelp={() => setShowHotkeys(true)}
+          isMaximized={isMaximized}
+          onMinimize={() => window.electronAPI?.minimizeWindow?.()}
+          onToggleMaximize={async () => {
+            window.electronAPI?.toggleMaximizeWindow?.();
+            const val = await window.electronAPI?.isWindowMaximized?.();
+            setIsMaximized(Boolean(val));
+          }}
+          onClose={() => window.electronAPI?.closeWindow?.()}
+        />
+      ) : (
+        <div style={{ height: 34, background: C.panelBg, borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", padding: "0 10px", gap: 10, flexShrink: 0, fontFamily: FONT }}>
+          <span style={{ color: C.accent, fontWeight: 700, fontSize: 11 }}>hledger</span>
           <div style={{ flex: 1 }} />
-          <span style={{ fontFamily: FONT, fontSize: 11, color: C.gutterText }}>
-            Ln {cursorLine + 1} · {transactions.length} txns · {Object.keys(collectAccounts(transactions)).length} accounts
-          </span>
-        </div>
-      )}
-
-      {/* Status bar for Electron (bottom of window style) or inline */}
-      {window.electronAPI && (
-        <div style={{ height: 28, background: C.panelBg, borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", padding: "0 16px", gap: 16, flexShrink: 0 }}>
-          <span style={{ fontFamily: FONT, fontSize: 11, color: C.gutterText }}>
-            {filePath ? filePath : "Untitled"}
-          </span>
-          <div style={{ flex: 1 }} />
-          <span style={{ fontFamily: FONT, fontSize: 11, color: C.gutterText }}>
-            Ln {cursorLine + 1} · {transactions.length} txns · {Object.keys(collectAccounts(transactions)).length} accounts
-          </span>
+          <button onClick={() => setShowHotkeys(true)} style={{ width: 24, height: 24, borderRadius: 4, border: `1px solid ${C.border}`, background: "transparent", color: C.gutterActive, fontWeight: 700, fontFamily: FONT, cursor: "pointer", fontSize: 12 }}>
+            ?
+          </button>
         </div>
       )}
 
@@ -346,6 +643,7 @@ export default function App() {
               const isWarn = !isErr && warningLines.has(i);
               return (
                 <div key={i} style={{ height: lineHeight, lineHeight: lineHeight + "px", fontFamily: FONT, fontSize: 11, textAlign: "right", paddingRight: 8, color: i === cursorLine ? C.gutterActive : isErr ? C.error : isWarn ? C.warning : C.gutterText, fontWeight: i === cursorLine ? 600 : 400, position: "relative" }}>
+                  {dirtyLines.has(i) && <span style={{ position: "absolute", left: 1, top: 2, width: 3, height: lineHeight - 4, background: "#8bdc8e", borderRadius: 2 }} />}
                   {isErr && <span style={{ position: "absolute", left: 6, color: C.error, fontSize: 8, top: 6 }}>●</span>}
                   {isWarn && <span style={{ position: "absolute", left: 5, color: C.warning, fontSize: 9, top: 5 }}>▲</span>}
                   {i + 1}
@@ -368,6 +666,7 @@ export default function App() {
 
           {/* Textarea */}
           <textarea
+            className="textarea-editor"
             ref={textareaRef}
             value={text}
             onChange={(e) => handleTextChange(e.target.value)}
@@ -390,10 +689,12 @@ export default function App() {
             }}
           />
         </div>
-        <AccountsSidebar transactions={transactions} />
+        <AccountsSidebar transactions={transactionsForAnalysis} />
       </div>
 
       <ErrorPanel errors={allErrors} warnings={allWarnings} onClickError={goToLine} onAutofix={handleAutofix} panelMode={panelMode} setPanelMode={setPanelMode} />
+      {showHotkeys && <HotkeysModal onClose={() => setShowHotkeys(false)} />}
+      <AppDialogModal request={appDialogRequest} onRespond={respondAppDialog} />
     </div>
   );
 }

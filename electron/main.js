@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog, Menu, shell } = require("electron");
+const { app, BrowserWindow, ipcMain, dialog, Menu } = require("electron");
 const path = require("path");
 const fs = require("fs");
 const chokidar = require("chokidar");
@@ -34,7 +34,6 @@ function addRecentFile(filePath) {
   recent.unshift(filePath);
   if (recent.length > MAX_RECENT) recent = recent.slice(0, MAX_RECENT);
   saveRecentFiles(recent);
-  buildMenu();
 }
 
 // ─── File watching ─────────────────────────────────────────────────
@@ -68,115 +67,42 @@ function updateTitle() {
 // ─── Menu ──────────────────────────────────────────────────────────
 
 function buildMenu() {
-  const recentFiles = loadRecentFiles();
-
-  const recentSubmenu =
-    recentFiles.length > 0
-      ? [
-          ...recentFiles.map((f) => ({
-            label: f,
-            click: () => openFile(f),
-          })),
-          { type: "separator" },
-          {
-            label: "Clear Recent",
-            click: () => {
-              saveRecentFiles([]);
-              buildMenu();
-            },
-          },
-        ]
-      : [{ label: "No recent files", enabled: false }];
-
-  const template = [
-    {
-      label: "File",
-      submenu: [
-        {
-          label: "New",
-          accelerator: "CmdOrCtrl+N",
-          click: () => newFile(),
-        },
-        {
-          label: "Open...",
-          accelerator: "CmdOrCtrl+O",
-          click: () => openFileDialog(),
-        },
-        {
-          label: "Open Recent",
-          submenu: recentSubmenu,
-        },
-        { type: "separator" },
-        {
-          label: "Save",
-          accelerator: "CmdOrCtrl+S",
-          click: () => saveFile(),
-        },
-        {
-          label: "Save As...",
-          accelerator: "CmdOrCtrl+Shift+S",
-          click: () => saveFileAs(),
-        },
-        { type: "separator" },
-        { role: "quit" },
-      ],
-    },
-    {
-      label: "Edit",
-      submenu: [
-        { role: "undo" },
-        { role: "redo" },
-        { type: "separator" },
-        { role: "cut" },
-        { role: "copy" },
-        { role: "paste" },
-        { role: "selectAll" },
-      ],
-    },
-    {
-      label: "View",
-      submenu: [
-        { role: "zoomIn" },
-        { role: "zoomOut" },
-        { role: "resetZoom" },
-        { type: "separator" },
-        { role: "togglefullscreen" },
-        ...(isDev ? [{ type: "separator" }, { role: "toggleDevTools" }] : []),
-      ],
-    },
-    {
-      label: "Help",
-      submenu: [
-        {
-          label: "hledger Documentation",
-          click: () => shell.openExternal("https://hledger.org/"),
-        },
-      ],
-    },
-  ];
-
-  const menu = Menu.buildFromTemplate(template);
-  Menu.setApplicationMenu(menu);
+  Menu.setApplicationMenu(null);
 }
 
 // ─── File operations ───────────────────────────────────────────────
 
+function requestRendererDialog(kind, payload = {}, timeoutMs = 20000) {
+  if (!mainWindow || mainWindow.isDestroyed()) return Promise.resolve(null);
+  const responseChannel = `app-dialog-response-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = (value) => {
+      if (settled) return;
+      settled = true;
+      resolve(value);
+    };
+    ipcMain.once(responseChannel, (_, value) => done(value));
+    mainWindow.webContents.send("app-dialog-request", { kind, payload, responseChannel });
+    setTimeout(() => done(null), timeoutMs);
+  });
+}
+
+async function showAppError(title, message) {
+  await requestRendererDialog("error", { title, message });
+}
+
 async function confirmUnsaved() {
   if (!unsavedChanges) return true;
-  const { response } = await dialog.showMessageBox(mainWindow, {
-    type: "warning",
-    buttons: ["Save", "Don't Save", "Cancel"],
-    defaultId: 0,
-    cancelId: 2,
+  const action = await requestRendererDialog("unsaved", {
     title: "Unsaved Changes",
     message: "You have unsaved changes. What would you like to do?",
   });
-  if (response === 0) {
-    await saveFile();
-    return true;
+  if (action === "save") {
+    return await saveFile();
   }
-  if (response === 1) return true;
-  return false; // Cancel
+  if (action === "discard") return true;
+  return false;
 }
 
 async function newFile() {
@@ -186,7 +112,7 @@ async function newFile() {
   stopWatching();
   updateTitle();
   mainWindow.webContents.send("file-opened", {
-    content: "; New hledger journal\n\n",
+    content: "",
     filePath: null,
   });
 }
@@ -202,7 +128,7 @@ async function openFileDialog() {
     properties: ["openFile"],
   });
   if (canceled || filePaths.length === 0) return;
-  openFile(filePaths[0]);
+  await openFile(filePaths[0]);
 }
 
 async function openFile(filePath) {
@@ -216,7 +142,7 @@ async function openFile(filePath) {
     watchFile(filePath);
     mainWindow.webContents.send("file-opened", { content, filePath });
   } catch (err) {
-    dialog.showErrorBox("Error Opening File", `Could not read file:\n${err.message}`);
+    await showAppError("Error Opening File", `Could not read file:\n${err.message}`);
   }
 }
 
@@ -224,15 +150,17 @@ async function saveFile() {
   if (!currentFilePath) return saveFileAs();
   try {
     const content = await getEditorContent();
-    if (content === null) return;
+    if (content === null) return false;
     stopWatching(); // pause watcher so we don't trigger external-change
     fs.writeFileSync(currentFilePath, content, "utf-8");
     unsavedChanges = false;
     updateTitle();
     watchFile(currentFilePath); // resume
     mainWindow.webContents.send("file-saved", currentFilePath);
+    return true;
   } catch (err) {
-    dialog.showErrorBox("Error Saving File", `Could not save:\n${err.message}`);
+    await showAppError("Error Saving File", `Could not save:\n${err.message}`);
+    return false;
   }
 }
 
@@ -245,7 +173,7 @@ async function saveFileAs() {
       { name: "All Files", extensions: ["*"] },
     ],
   });
-  if (canceled || !filePath) return;
+  if (canceled || !filePath) return false;
   currentFilePath = filePath;
   addRecentFile(filePath);
   return saveFile();
@@ -271,6 +199,79 @@ ipcMain.on("content-changed", () => {
 });
 
 ipcMain.handle("get-recent-files", () => loadRecentFiles());
+ipcMain.handle("file:new", () => newFile());
+ipcMain.handle("file:open", () => openFileDialog());
+ipcMain.handle("file:save", () => saveFile());
+ipcMain.handle("file:save-as", () => saveFileAs());
+
+ipcMain.on("window:minimize", () => {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.minimize();
+});
+
+ipcMain.on("window:toggle-maximize", () => {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
+  if (mainWindow.isMaximized()) mainWindow.unmaximize();
+  else mainWindow.maximize();
+});
+
+ipcMain.on("window:close", () => {
+  if (mainWindow && !mainWindow.isDestroyed()) mainWindow.close();
+});
+
+ipcMain.handle("window:is-maximized", () => {
+  if (!mainWindow || mainWindow.isDestroyed()) return false;
+  return mainWindow.isMaximized();
+});
+
+function parseIncludeTarget(raw) {
+  const withoutComment = raw.replace(/\s+;.*$/, "").trim();
+  if (!withoutComment) return null;
+  const quoted = withoutComment.match(/^["'](.+)["']$/);
+  return quoted ? quoted[1] : withoutComment;
+}
+
+function resolveIncludes(content, baseFilePath, visited = new Set(), out = []) {
+  if (!baseFilePath) return out;
+  const baseDir = path.dirname(baseFilePath);
+  const lines = content.split("\n");
+
+  for (let i = 0; i < lines.length; i++) {
+    const m = lines[i].match(/^\s*include\s+(.+)$/i);
+    if (!m) continue;
+    const target = parseIncludeTarget(m[1]);
+    if (!target) continue;
+
+    const resolved = path.resolve(baseDir, target);
+    if (!fs.existsSync(resolved)) continue;
+
+    let realPath;
+    try {
+      realPath = fs.realpathSync(resolved);
+    } catch {
+      realPath = resolved;
+    }
+    if (visited.has(realPath)) continue;
+    visited.add(realPath);
+
+    let includedContent = "";
+    try {
+      includedContent = fs.readFileSync(realPath, "utf-8");
+    } catch {
+      continue;
+    }
+
+    out.push({ filePath: realPath, content: includedContent });
+    resolveIncludes(includedContent, realPath, visited, out);
+  }
+  return out;
+}
+
+ipcMain.handle("resolve-includes", (_, payload) => {
+  const content = payload?.content || "";
+  const filePath = payload?.filePath || null;
+  if (!filePath) return [];
+  return resolveIncludes(content, filePath);
+});
 
 ipcMain.on("reload-file", () => {
   if (currentFilePath && fs.existsSync(currentFilePath)) {
@@ -291,6 +292,8 @@ function createWindow() {
     minHeight: 500,
     backgroundColor: "#1a1d23",
     title: "hledger Editor",
+    frame: false,
+    autoHideMenuBar: true,
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,
@@ -327,11 +330,16 @@ function createWindow() {
 app.whenReady().then(() => {
   createWindow();
 
+  const envLedgerFile = process.env.LEDGER_FILE;
   // Handle file association: opened via double-click on .journal file
   const fileArg = process.argv.find(
     (arg) => arg.endsWith(".journal") || arg.endsWith(".hledger") || arg.endsWith(".j")
   );
-  if (fileArg && fs.existsSync(fileArg)) {
+  if (envLedgerFile && fs.existsSync(envLedgerFile)) {
+    mainWindow.webContents.once("did-finish-load", () => {
+      openFile(path.resolve(envLedgerFile));
+    });
+  } else if (fileArg && fs.existsSync(fileArg)) {
     // Wait for renderer to be ready
     mainWindow.webContents.once("did-finish-load", () => {
       openFile(path.resolve(fileArg));
