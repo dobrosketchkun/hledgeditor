@@ -1,0 +1,6 @@
+; Included test file
+; Expected: this file is parsed via include-resolve path
+
+2026-03-21 Included transaction
+  expenses:food         7
+  assets:cash           -7

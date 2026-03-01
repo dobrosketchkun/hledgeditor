@@ -1,0 +1,16 @@
+; Parser test journal: per-commodity balancing
+; Expected:
+; - Tx 1: balanced (USD and EUR each balance independently)
+; - Tx 2: unbalanced EUR only
+
+2026-03-10 Balanced multi-commodity
+  assets:wallet         10 USD
+  income:salary         -10 USD
+  assets:eurcash        5 EUR
+  income:fx             -5 EUR
+
+2026-03-11 Unbalanced multi-commodity
+  assets:wallet         10 USD
+  income:salary         -10 USD
+  assets:eurcash        5 EUR
+  income:fx             -4 EUR

@@ -1,0 +1,22 @@
+; Parser test journal: valid core scenarios
+; Expected: 0 errors
+
+2026-03-01 Opening balances
+  assets:bank:checking  $5200.00
+  equity:opening        -$5200.00
+
+2026-03-02 Commodity suffix
+  assets:cash           100 USD
+  income:salary         -100 USD
+
+2026-03-03 Commodity prefix
+  assets:cash           USD 50
+  income:gift           USD -50
+
+2026-03-04 Mixed postings with one inferred amount
+  expenses:food         $12.30
+  assets:cash
+
+2026-03-05 Header with status and code
+  assets:cash           10
+  income:misc           -10

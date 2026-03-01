@@ -1,0 +1,27 @@
+; Parser test journal: invalid structure scenarios
+; Expected:
+; - Tx 1: invalid date
+; - Tx 2: posting separator error (single-space before amount)
+; - Tx 3: too many inferred amounts
+; - Tx 4: unbalanced transaction
+; - Tx 5: invalid amount token
+
+2026-13-01 Invalid month
+  assets:cash           10
+  income:misc           -10
+
+2026-03-02 Single-space separator
+  assets:cash $10
+  income:misc           -10
+
+2026-03-03 Too many inferred amounts
+  assets:cash
+  expenses:food
+
+2026-03-04 Unbalanced
+  assets:cash           10
+  income:misc           -8
+
+2026-03-05 Bad amount token
+  assets:cash           ten USD
+  income:misc           -10 USD

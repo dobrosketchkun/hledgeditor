@@ -1,0 +1,11 @@
+; Parser test journal: include handling
+; Expected in root file:
+; - No parse error for include line syntax
+; - Root tx validates
+; Included files should contribute analysis context in app
+
+include ./04-includes-sub.journal
+
+2026-03-20 Root transaction
+  assets:cash           20
+  income:misc           -20
