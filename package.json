@@ -1,0 +1,52 @@
+{
+  "name": "hledger-editor",
+  "version": "1.0.0",
+  "description": "A syntax-highlighting editor for hledger journal files with real-time error checking",
+  "main": "electron/main.js",
+  "scripts": {
+    "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
+    "build:renderer": "vite build",
+    "build:win": "npm run build:renderer && set CSC_IDENTITY_AUTO_DISCOVERY=false&& electron-builder --win --config.win.signAndEditExecutable=false",
+    "build": "npm run build:renderer && electron-builder"
+  },
+  "build": {
+    "appId": "com.hledger.editor",
+    "productName": "hledger Editor",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "electron/**/*",
+      "dist/**/*"
+    ],
+    "win": {
+      "target": "nsis",
+      "icon": null
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    },
+    "fileAssociations": [
+      {
+        "ext": "journal",
+        "name": "hledger Journal",
+        "description": "hledger journal file",
+        "mimeType": "text/plain"
+      }
+    ]
+  },
+  "dependencies": {
+    "chokidar": "^3.6.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-react": "^4.2.1",
+    "concurrently": "^8.2.2",
+    "electron": "^28.1.0",
+    "electron-builder": "^24.9.1",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "vite": "^5.0.11",
+    "wait-on": "^7.2.0"
+  }
+}
