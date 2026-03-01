@@ -184,7 +184,7 @@ function validateTransaction(tx) {
 }
 
 export function parseJournal(text, source = "root") {
-  const lines = text.split("\n");
+  const lines = String(text || "").split(/\r\n|\n|\r/);
   const transactions = [];
   let current = null;
 
@@ -360,15 +360,16 @@ export function findTypoWarnings(transactions) {
 }
 
 export function highlightLine(line, lineIdx, errorLines, warningLines) {
+  const cleanLine = String(line || "").replace(/\r$/, "");
   const hasError = errorLines.has(lineIdx);
   const hasWarning = warningLines.has(lineIdx);
 
-  if (line.trim().startsWith(";")) {
-    return { segments: [{ text: line, cls: "cm" }], hasError, hasWarning };
+  if (cleanLine.trim().startsWith(";")) {
+    return { segments: [{ text: cleanLine, cls: "cm" }], hasError, hasWarning };
   }
 
-  if (/^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}\b/.test(line)) {
-    const m = line.match(/^(\d{4}[-/.]\d{1,2}[-/.]\d{1,2})(\s+)(.*?)(\s+;.*)?$/);
+  if (/^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}\b/.test(cleanLine)) {
+    const m = cleanLine.match(/^(\d{4}[-/.]\d{1,2}[-/.]\d{1,2})(\s+)(.*?)(\s+;.*)?$/);
     if (m) {
       const segs = [
         { text: m[1], cls: "dt" },
@@ -378,11 +379,11 @@ export function highlightLine(line, lineIdx, errorLines, warningLines) {
       if (m[4]) segs.push({ text: m[4], cls: "cm" });
       return { segments: segs, hasError, hasWarning };
     }
-    return { segments: [{ text: line, cls: "dt" }], hasError, hasWarning };
+    return { segments: [{ text: cleanLine, cls: "dt" }], hasError, hasWarning };
   }
 
-  if (/^\s*include\s+/.test(line) && !line.trim().startsWith(";")) {
-    const m = line.match(/^(\s*include\s+)(.*)$/);
+  if (/^\s*include\s+/.test(cleanLine) && !cleanLine.trim().startsWith(";")) {
+    const m = cleanLine.match(/^(\s*include\s+)(.*)$/);
     if (m) {
       return {
         segments: [
@@ -395,9 +396,9 @@ export function highlightLine(line, lineIdx, errorLines, warningLines) {
     }
   }
 
-  if (/^\s/.test(line) && line.trim() !== "") {
-    const stripped = line.replace(/(\s+;.*)$/, "");
-    const commentPart = line.slice(stripped.length);
+  if (/^\s/.test(cleanLine) && cleanLine.trim() !== "") {
+    const stripped = cleanLine.replace(/(\s+;.*)$/, "");
+    const commentPart = cleanLine.slice(stripped.length);
     const indent = stripped.match(/^(\s*)/)[1];
     const rest = stripped.slice(indent.length);
 
@@ -422,5 +423,5 @@ export function highlightLine(line, lineIdx, errorLines, warningLines) {
     return { segments: segs, hasError, hasWarning };
   }
 
-  return { segments: [{ text: line, cls: "" }], hasError, hasWarning };
+  return { segments: [{ text: cleanLine, cls: "" }], hasError, hasWarning };
 }
