@@ -587,6 +587,40 @@ function SmallModal({ title, children, onClose, width = 460 }) {
   );
 }
 
+function DropOverlay({ active }) {
+  if (!active) return null;
+  return (
+    <div
+      style={{
+        position: "fixed",
+        inset: 0,
+        background: C.overlay,
+        border: `2px dashed ${C.accent}`,
+        zIndex: 60,
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
+        pointerEvents: "none",
+      }}
+    >
+      <div
+        style={{
+          background: C.panelBg,
+          border: `1px solid ${C.border}`,
+          borderRadius: 8,
+          padding: "14px 18px",
+          fontFamily: FONT,
+          color: C.text,
+          fontSize: 13,
+          boxShadow: "0 10px 28px rgba(0,0,0,0.38)",
+        }}
+      >
+        Drop journal file to open
+      </div>
+    </div>
+  );
+}
+
 /* ─── Custom Title Bar ───────────────────────────────────────────── */
 
 function TitleBar({ filePath, onHelp, onSettings, isMaximized, onMinimize, onToggleMaximize, onClose }) {
@@ -682,6 +716,8 @@ export default function App() {
   const [gotoLineInput, setGotoLineInput] = useState("");
   const [backupOffer, setBackupOffer] = useState(null);
   const [accountSuggest, setAccountSuggest] = useState(null);
+  const [dragCounter, setDragCounter] = useState(0);
+  const [showDropOverlay, setShowDropOverlay] = useState(false);
   const [appDialogRequest, setAppDialogRequest] = useState(null);
   const [recordingCommand, setRecordingCommand] = useState(null);
   const [recordingConflict, setRecordingConflict] = useState("");
@@ -699,6 +735,81 @@ export default function App() {
   // Keep ref in sync
   useEffect(() => { textRef.current = text; }, [text]);
   useEffect(() => { filePathRef.current = filePath; }, [filePath]);
+
+  useEffect(() => {
+    const getDropPath = (event) => {
+      const files = event?.dataTransfer?.files;
+      if (files && files.length > 0) {
+        const f0 = files[0];
+        return f0?.path || null;
+      }
+      return null;
+    };
+
+    const isFileDrag = (event) => {
+      const dt = event?.dataTransfer;
+      if (!dt) return false;
+      if (dt.types) {
+        if (typeof dt.types.contains === "function") return dt.types.contains("Files");
+        if (typeof dt.types.includes === "function") return dt.types.includes("Files");
+        try {
+          return Array.from(dt.types).includes("Files");
+        } catch {
+          // ignore
+        }
+      }
+      return Boolean(dt.files && dt.files.length > 0);
+    };
+
+    const onDragEnter = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragCounter((c) => c + 1);
+      if (isFileDrag(e)) setShowDropOverlay(true);
+    };
+    const onDragOver = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      if (isFileDrag(e)) {
+        e.dataTransfer.dropEffect = "copy";
+        setShowDropOverlay(true);
+      } else {
+        e.dataTransfer.dropEffect = "none";
+      }
+    };
+    const onDragLeave = (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragCounter((c) => {
+        const next = Math.max(0, c - 1);
+        if (next === 0) setShowDropOverlay(false);
+        return next;
+      });
+    };
+    const onDrop = async (e) => {
+      e.preventDefault();
+      e.stopPropagation();
+      setDragCounter(0);
+      setShowDropOverlay(false);
+
+      const files = e?.dataTransfer?.files;
+      if (!files || files.length !== 1) return;
+      const path = getDropPath(e);
+      if (!path) return;
+      await window.electronAPI?.openFilePath?.(path);
+    };
+
+    window.addEventListener("dragenter", onDragEnter);
+    window.addEventListener("dragover", onDragOver);
+    window.addEventListener("dragleave", onDragLeave);
+    window.addEventListener("drop", onDrop);
+    return () => {
+      window.removeEventListener("dragenter", onDragEnter);
+      window.removeEventListener("dragover", onDragOver);
+      window.removeEventListener("dragleave", onDragLeave);
+      window.removeEventListener("drop", onDrop);
+    };
+  }, []);
 
   // ─── Electron IPC ──────────────────────────────────────────────
   useEffect(() => {
@@ -1381,6 +1492,7 @@ export default function App() {
         </SmallModal>
       )}
       <AppDialogModal request={appDialogRequest} onRespond={respondAppDialog} />
+      <DropOverlay active={showDropOverlay} />
     </div>
   );
 }

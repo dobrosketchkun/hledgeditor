@@ -42,6 +42,7 @@ contextBridge.exposeInMainWorld("electronAPI", {
   getRecentFiles: () => ipcRenderer.invoke("get-recent-files"),
   newFile: () => ipcRenderer.invoke("file:new"),
   openFile: () => ipcRenderer.invoke("file:open"),
+  openFilePath: (filePath) => ipcRenderer.invoke("file:open-path", filePath),
   saveFile: () => ipcRenderer.invoke("file:save"),
   saveFileAs: () => ipcRenderer.invoke("file:save-as"),
   resolveIncludes: (content, filePath) => ipcRenderer.invoke("resolve-includes", { content, filePath }),

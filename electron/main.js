@@ -178,6 +178,34 @@ async function openFile(filePath) {
   }
 }
 
+function hasAllowedJournalExtension(filePath) {
+  const ext = path.extname(filePath || "").toLowerCase();
+  return ext === ".journal" || ext === ".hledger" || ext === ".j";
+}
+
+async function openFileFromDrop(filePath) {
+  if (!filePath || typeof filePath !== "string") {
+    await showAppError("Drop Error", "No file path was provided.");
+    return false;
+  }
+  if (!hasAllowedJournalExtension(filePath)) {
+    await showAppError("Unsupported File", "Only .journal, .hledger, or .j files can be dropped.");
+    return false;
+  }
+  if (!fs.existsSync(filePath)) {
+    await showAppError("File Not Found", `Dropped file does not exist:\n${filePath}`);
+    return false;
+  }
+  const stat = fs.statSync(filePath);
+  if (!stat.isFile()) {
+    await showAppError("Unsupported Drop", "Please drop a file, not a folder.");
+    return false;
+  }
+
+  await openFile(filePath);
+  return true;
+}
+
 async function saveFile() {
   if (!currentFilePath) return saveFileAs();
   try {
@@ -236,6 +264,7 @@ ipcMain.handle("file:new", () => newFile());
 ipcMain.handle("file:open", () => openFileDialog());
 ipcMain.handle("file:save", () => saveFile());
 ipcMain.handle("file:save-as", () => saveFileAs());
+ipcMain.handle("file:open-path", (_, filePath) => openFileFromDrop(filePath));
 
 ipcMain.on("window:minimize", () => {
   if (mainWindow && !mainWindow.isDestroyed()) mainWindow.minimize();
