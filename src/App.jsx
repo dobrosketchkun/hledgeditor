@@ -628,6 +628,191 @@ function DropOverlay({ active }) {
   );
 }
 
+/* ─── Find / Replace Bar ─────────────────────────────────────────── */
+
+function FindReplaceBar({
+  findQuery, setFindQuery, replaceQuery, setReplaceQuery,
+  findUseRegex, setFindUseRegex, showReplace,
+  onFindNext, onFindPrev, onReplaceCurrent, onReplaceAll,
+  onClose, searchRegexError,
+}) {
+  const inputRef = useRef(null);
+  const [pos, setPos] = useState({ x: -1, y: 12 });
+  const dragRef = useRef(null);
+
+  useEffect(() => {
+    if (pos.x === -1) setPos((p) => ({ ...p, x: window.innerWidth - 490 }));
+  }, [pos.x]);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, []);
+
+  useEffect(() => {
+    const onMove = (e) => {
+      if (!dragRef.current) return;
+      const dx = e.clientX - dragRef.current.x;
+      const dy = e.clientY - dragRef.current.y;
+      dragRef.current = { x: e.clientX, y: e.clientY };
+      setPos((p) => ({
+        x: Math.max(0, p.x + dx),
+        y: Math.max(0, p.y + dy),
+      }));
+    };
+    const onUp = () => { dragRef.current = null; };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+    return () => {
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+  }, []);
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Escape") { onClose(); return; }
+    if (e.key === "Enter" && !e.shiftKey) { e.preventDefault(); onFindNext(); }
+    if (e.key === "Enter" && e.shiftKey) { e.preventDefault(); onFindPrev(); }
+  };
+
+  const btnBase = {
+    background: "transparent",
+    border: `1px solid ${C.border}`,
+    borderRadius: 4,
+    fontFamily: FONT,
+    fontSize: 11,
+    cursor: "pointer",
+    padding: "4px 8px",
+    color: C.gutterActive,
+    flexShrink: 0,
+  };
+
+  return (
+    <div
+      style={{
+        position: "fixed",
+        left: pos.x,
+        top: pos.y,
+        zIndex: 25,
+        width: 460,
+        maxWidth: "90vw",
+        background: C.panelBg,
+        border: `1px solid ${C.border}`,
+        borderRadius: 8,
+        boxShadow: "0 6px 24px rgba(0,0,0,0.35)",
+        fontFamily: FONT,
+        color: C.text,
+        fontSize: 12,
+      }}
+    >
+      {/* Drag handle / header */}
+      <div
+        onMouseDown={(e) => { dragRef.current = { x: e.clientX, y: e.clientY }; }}
+        style={{
+          padding: "6px 10px",
+          display: "flex",
+          alignItems: "center",
+          cursor: "grab",
+          userSelect: "none",
+          borderBottom: `1px solid ${C.border}`,
+        }}
+      >
+        <span style={{ color: C.accent, fontWeight: 700, fontSize: 11 }}>
+          {showReplace ? "Find & Replace" : "Find"}
+        </span>
+        <div style={{ flex: 1 }} />
+        <button onClick={onClose} style={{ ...btnBase, padding: "2px 7px" }}>Esc</button>
+      </div>
+
+      <div style={{ padding: "8px 10px", display: "flex", flexDirection: "column", gap: 6 }}>
+        {/* Find row */}
+        <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+          <input
+            ref={inputRef}
+            value={findQuery}
+            onChange={(e) => setFindQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Find"
+            style={{
+              flex: 1,
+              background: C.bg,
+              color: C.text,
+              border: `1px solid ${C.border}`,
+              borderRadius: 4,
+              padding: "4px 8px",
+              fontFamily: FONT,
+              fontSize: 12,
+              outline: "none",
+            }}
+          />
+          <button
+            disabled={!!searchRegexError}
+            onClick={onFindPrev}
+            title="Find previous (Shift+Enter)"
+            style={{ ...btnBase, opacity: searchRegexError ? 0.45 : 1 }}
+          >◂</button>
+          <button
+            disabled={!!searchRegexError}
+            onClick={onFindNext}
+            title="Find next (Enter)"
+            style={{ ...btnBase, opacity: searchRegexError ? 0.45 : 1 }}
+          >▸</button>
+        </div>
+
+        {/* Replace row */}
+        {showReplace && (
+          <div style={{ display: "flex", gap: 6, alignItems: "center" }}>
+            <input
+              value={replaceQuery}
+              onChange={(e) => setReplaceQuery(e.target.value)}
+              onKeyDown={handleKeyDown}
+              placeholder="Replace with"
+              style={{
+                flex: 1,
+                background: C.bg,
+                color: C.text,
+                border: `1px solid ${C.border}`,
+                borderRadius: 4,
+                padding: "4px 8px",
+                fontFamily: FONT,
+                fontSize: 12,
+                outline: "none",
+              }}
+            />
+            <button
+              disabled={!!searchRegexError}
+              onClick={onReplaceCurrent}
+              title="Replace"
+              style={{ ...btnBase, color: C.warning, borderColor: `${C.warning}66`, opacity: searchRegexError ? 0.45 : 1 }}
+            >Replace</button>
+            <button
+              disabled={!!searchRegexError}
+              onClick={onReplaceAll}
+              title="Replace all"
+              style={{ ...btnBase, background: C.accent, color: "#fff", border: "none", fontWeight: 600, opacity: searchRegexError ? 0.45 : 1 }}
+            >All</button>
+          </div>
+        )}
+
+        {/* Options row */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
+          <label style={{ fontSize: 11, color: C.gutterActive, display: "flex", alignItems: "center", gap: 4, cursor: "pointer" }}>
+            <input
+              type="checkbox"
+              checked={findUseRegex}
+              onChange={(e) => setFindUseRegex(e.target.checked)}
+            />
+            Regex
+          </label>
+          {searchRegexError && (
+            <span style={{ fontSize: 10, color: C.error }}>{searchRegexError}</span>
+          )}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 /* ─── Custom Title Bar ───────────────────────────────────────────── */
 
 function TitleBar({ filePath, onHelp, onSettings, isMaximized, onMinimize, onToggleMaximize, onClose }) {
@@ -798,6 +983,57 @@ function sameAccountSuggestion(a, b) {
   return true;
 }
 
+function renderLineWithFindHighlight(segments, lineStart, activeFindRange) {
+  if (!activeFindRange || activeFindRange.start >= activeFindRange.end) {
+    return segments.map((seg, idx) => ({
+      key: `seg-${idx}`,
+      cls: seg.cls || "",
+      text: seg.text || "",
+      activeFind: false,
+    }));
+  }
+
+  const out = [];
+  let abs = lineStart;
+  let partIdx = 0;
+  for (const seg of segments) {
+    const cls = seg.cls || "";
+    const text = seg.text || "";
+    if (!text) continue;
+    const segStart = abs;
+    const segEnd = segStart + text.length;
+    if (activeFindRange.end <= segStart || activeFindRange.start >= segEnd) {
+      out.push({ key: `seg-${partIdx++}`, cls, text, activeFind: false });
+      abs = segEnd;
+      continue;
+    }
+
+    let local = 0;
+    while (local < text.length) {
+      const partAbs = segStart + local;
+      const isMatch = partAbs >= activeFindRange.start && partAbs < activeFindRange.end;
+      let nextAbsBoundary = segEnd;
+      if (isMatch) {
+        nextAbsBoundary = Math.min(segEnd, activeFindRange.end);
+      } else if (activeFindRange.start > partAbs) {
+        nextAbsBoundary = Math.min(segEnd, activeFindRange.start);
+      }
+      const take = nextAbsBoundary - partAbs;
+      if (take > 0) {
+        out.push({
+          key: `seg-${partIdx++}`,
+          cls,
+          text: text.slice(local, local + take),
+          activeFind: isMatch,
+        });
+      }
+      local += Math.max(take, 1);
+    }
+    abs = segEnd;
+  }
+  return out;
+}
+
 /* ─── Main Editor ────────────────────────────────────────────────── */
 
 export default function App() {
@@ -812,6 +1048,7 @@ export default function App() {
   const [showFind, setShowFind] = useState(false);
   const [showReplace, setShowReplace] = useState(false);
   const [showGotoLine, setShowGotoLine] = useState(false);
+  const [activeFindRange, setActiveFindRange] = useState(null);
   const [findQuery, setFindQuery] = useState("");
   const [replaceQuery, setReplaceQuery] = useState("");
   const [findUseRegex, setFindUseRegex] = useState(false);
@@ -1005,12 +1242,51 @@ export default function App() {
     }
     if (match && match[0].length > 0) {
       const idx = match.index;
-      area.focus();
+      const lineIdx = content.slice(0, idx).split("\n").length - 1;
+      const matchEnd = idx + match[0].length;
       area.selectionStart = idx;
-      area.selectionEnd = idx + match[0].length;
-      setCursorLine(content.slice(0, idx).split("\n").length - 1);
+      area.selectionEnd = matchEnd;
+      const targetTop = Math.max(
+        0,
+        lineIdx * settings.theme.lineHeight - Math.max(40, area.clientHeight * 0.35)
+      );
+      area.scrollTop = targetTop;
+      setCursorLine(lineIdx);
+      setActiveFindRange({ start: idx, end: matchEnd });
+    } else {
+      setActiveFindRange(null);
     }
-  }, [getSearchRegex]);
+  }, [getSearchRegex, settings.theme.lineHeight]);
+
+  const applyFindPrev = useCallback((query) => {
+    if (!query || !textareaRef.current) return;
+    const { regex } = getSearchRegex(query, true);
+    if (!regex) return;
+    const area = textareaRef.current;
+    const content = textRef.current;
+    const before = area.selectionStart || 0;
+    const matches = [];
+    let m;
+    while ((m = regex.exec(content)) !== null) {
+      if (m[0].length === 0) { regex.lastIndex++; continue; }
+      matches.push({ index: m.index, length: m[0].length });
+    }
+    if (matches.length === 0) return;
+    let pick = matches[matches.length - 1];
+    for (let i = matches.length - 1; i >= 0; i--) {
+      if (matches[i].index < before) { pick = matches[i]; break; }
+    }
+    const lineIdx = content.slice(0, pick.index).split("\n").length - 1;
+    area.selectionStart = pick.index;
+    area.selectionEnd = pick.index + pick.length;
+    const targetTop = Math.max(
+      0,
+      lineIdx * settings.theme.lineHeight - Math.max(40, area.clientHeight * 0.35)
+    );
+    area.scrollTop = targetTop;
+    setCursorLine(lineIdx);
+    setActiveFindRange({ start: pick.index, end: pick.index + pick.length });
+  }, [getSearchRegex, settings.theme.lineHeight]);
 
   const applyReplaceCurrent = useCallback(() => {
     if (!findQuery || !textareaRef.current) return;
@@ -1235,6 +1511,14 @@ export default function App() {
   const errorLines = new Set(allErrors.map((e) => e.line));
   const warningLines = new Set(allWarnings.map((w) => w.line));
   const highlighted = lines.map((line, i) => highlightLine(line, i, errorLines, warningLines));
+  const lineStartOffsets = useMemo(() => {
+    let pos = 0;
+    return lines.map((line) => {
+      const start = pos;
+      pos += line.length + 1;
+      return start;
+    });
+  }, [lines]);
 
   // ─── Scroll sync ───────────────────────────────────────────────
   const syncScroll = useCallback(() => {
@@ -1260,6 +1544,9 @@ export default function App() {
   }, [text, accountNames]);
 
   useEffect(() => { updateCursorLine(); }, [text, updateCursorLine]);
+  useEffect(() => {
+    if (!showFind || !findQuery) setActiveFindRange(null);
+  }, [showFind, findQuery]);
 
   // ─── Go to line with flash ────────────────────────────────────
   const goToLine = useCallback((lineNum) => {
@@ -1319,6 +1606,7 @@ export default function App() {
         .seg-gh { color: ${C.ghostText}; }
         .line-error { background: ${C.errorBg}; }
         .line-warning { background: ${C.warningBg}; }
+        .find-hit-active { background: ${C.selection}; color: ${C.selectionText}; border-radius: 2px; }
         .textarea-editor::selection { background: ${C.selection}; color: ${C.selectionText}; }
         @keyframes line-flash-anim {
           0% { background: rgba(97,175,239,0.18); box-shadow: inset 3px 0 0 ${C.accent}; }
@@ -1387,9 +1675,16 @@ export default function App() {
             {highlighted.map((hl, i) => (
               <div key={flashLine === i ? `${i}-flash` : i} className={flashLine === i ? "line-flash" : hl.hasError ? "line-error" : hl.hasWarning ? "line-warning" : ""}
                 style={{ height: lineHeight, lineHeight: lineHeight + "px", fontFamily: FONT, fontSize, whiteSpace: "pre", paddingRight: 12 }}>
-                {hl.segments.map((seg, j) => (
-                  <span key={j} className={seg.cls ? `seg-${seg.cls}` : undefined}>{seg.text}</span>
-                ))}
+                {renderLineWithFindHighlight(hl.segments, lineStartOffsets[i], activeFindRange).map((seg) => {
+                  const clsNames = [];
+                  if (seg.cls) clsNames.push(`seg-${seg.cls}`);
+                  if (seg.activeFind) clsNames.push("find-hit-active");
+                  return (
+                    <span key={seg.key} className={clsNames.length ? clsNames.join(" ") : undefined}>
+                      {seg.text}
+                    </span>
+                  );
+                })}
                 {accountSuggest?.lineIdx === i &&
                   accountSuggest?.matches?.length > 0 &&
                   (() => {
@@ -1509,47 +1804,21 @@ export default function App() {
         />
       )}
       {showFind && (
-        <SmallModal title={showReplace ? "Find & Replace" : "Find"} onClose={() => { setShowFind(false); setShowReplace(false); }}>
-          <div style={{ display: "flex", flexDirection: "column", gap: 8 }}>
-            <label style={{ fontSize: 12 }}>
-              Find
-              <input
-                value={findQuery}
-                onChange={(e) => setFindQuery(e.target.value)}
-                style={{ width: "100%", marginTop: 4, background: C.bg, color: C.text, border: `1px solid ${C.border}`, borderRadius: 4, padding: "4px 8px", fontFamily: FONT, fontSize: 12 }}
-              />
-            </label>
-            <label style={{ fontSize: 12, color: C.gutterActive }}>
-              <input
-                type="checkbox"
-                checked={findUseRegex}
-                onChange={(e) => setFindUseRegex(e.target.checked)}
-                style={{ marginRight: 6 }}
-              />
-              Regex
-            </label>
-            {searchRegexError && (
-              <div style={{ fontSize: 11, color: C.error, border: `1px solid ${C.error}`, borderRadius: 4, padding: "5px 8px" }}>
-                Invalid regex: {searchRegexError}
-              </div>
-            )}
-            {showReplace && (
-              <label style={{ fontSize: 12 }}>
-                Replace with
-                <input
-                  value={replaceQuery}
-                  onChange={(e) => setReplaceQuery(e.target.value)}
-                  style={{ width: "100%", marginTop: 4, background: C.bg, color: C.text, border: `1px solid ${C.border}`, borderRadius: 4, padding: "4px 8px", fontFamily: FONT, fontSize: 12 }}
-                />
-              </label>
-            )}
-            <div style={{ display: "flex", justifyContent: "flex-end", gap: 8 }}>
-              <button disabled={!!searchRegexError} onClick={() => applyFindNext(findQuery)} style={{ background: "transparent", color: C.gutterActive, border: `1px solid ${C.border}`, borderRadius: 4, padding: "5px 10px", fontFamily: FONT, fontSize: 11, cursor: searchRegexError ? "not-allowed" : "pointer", opacity: searchRegexError ? 0.55 : 1 }}>Find next</button>
-              {showReplace && <button disabled={!!searchRegexError} onClick={applyReplaceCurrent} style={{ background: "transparent", color: C.warning, border: `1px solid ${C.warning}`, borderRadius: 4, padding: "5px 10px", fontFamily: FONT, fontSize: 11, cursor: searchRegexError ? "not-allowed" : "pointer", opacity: searchRegexError ? 0.55 : 1 }}>Replace</button>}
-              {showReplace && <button disabled={!!searchRegexError} onClick={applyReplaceAll} style={{ background: C.accent, color: "#fff", border: "none", borderRadius: 4, padding: "5px 10px", fontFamily: FONT, fontSize: 11, cursor: searchRegexError ? "not-allowed" : "pointer", fontWeight: 600, opacity: searchRegexError ? 0.55 : 1 }}>Replace all</button>}
-            </div>
-          </div>
-        </SmallModal>
+        <FindReplaceBar
+          findQuery={findQuery}
+          setFindQuery={setFindQuery}
+          replaceQuery={replaceQuery}
+          setReplaceQuery={setReplaceQuery}
+          findUseRegex={findUseRegex}
+          setFindUseRegex={setFindUseRegex}
+          showReplace={showReplace}
+          onFindNext={() => applyFindNext(findQuery)}
+          onFindPrev={() => applyFindPrev(findQuery)}
+          onReplaceCurrent={applyReplaceCurrent}
+          onReplaceAll={applyReplaceAll}
+          onClose={() => { setShowFind(false); setShowReplace(false); }}
+          searchRegexError={searchRegexError}
+        />
       )}
       {showGotoLine && (
         <SmallModal title="Go To Line" onClose={() => setShowGotoLine(false)} width={360}>
