@@ -1717,6 +1717,20 @@ export default function App() {
             spellCheck={false}
             style={{ position: "absolute", left: 52, top: 0, right: 0, bottom: 0, fontFamily: FONT, fontSize, lineHeight: lineHeight + "px", paddingTop: 8, paddingLeft: 12, paddingRight: 12, color: "transparent", caretColor: C.cursor, background: "transparent", border: "none", outline: "none", resize: "none", whiteSpace: "pre", overflowWrap: "normal", overflow: "auto", zIndex: 2, width: "calc(100% - 52px)", tabSize: 4 }}
             onKeyDown={(e) => {
+              const primary = e.ctrlKey || e.metaKey;
+              const keyLower = String(e.key || "").toLowerCase();
+              if (primary && !e.altKey && (keyLower === "z" || keyLower === "y")) {
+                e.preventDefault();
+                e.stopPropagation();
+                const isRedo = keyLower === "y" || (keyLower === "z" && e.shiftKey);
+                document.execCommand(isRedo ? "redo" : "undo");
+                if (textareaRef.current) {
+                  handleTextChange(textareaRef.current.value);
+                  requestAnimationFrame(() => updateCursorLine());
+                }
+                return;
+              }
+
               if (accountSuggest?.matches?.length) {
                 if (e.key === "ArrowDown") {
                   e.preventDefault();
