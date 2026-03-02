@@ -47,6 +47,8 @@ const DEFAULT_SETTINGS = {
     "editor.find": "Ctrl+F",
     "editor.replace": "Ctrl+H",
     "editor.gotoLine": "Ctrl+G",
+    "editor.gotoStart": "Ctrl+Home",
+    "editor.gotoEnd": "Ctrl+End",
     "app.settings": "Ctrl+,",
   },
 };
@@ -59,6 +61,8 @@ const COMMAND_LABELS = {
   "editor.find": "Find",
   "editor.replace": "Replace",
   "editor.gotoLine": "Go to line",
+  "editor.gotoStart": "Go to start of file",
+  "editor.gotoEnd": "Go to end of file",
   "app.settings": "Open settings",
 };
 const COMMAND_ORDER = [
@@ -69,6 +73,8 @@ const COMMAND_ORDER = [
   "editor.find",
   "editor.replace",
   "editor.gotoLine",
+  "editor.gotoStart",
+  "editor.gotoEnd",
   "app.settings",
   "help.hotkeys",
 ];
@@ -1050,7 +1056,22 @@ export default function App() {
     } else if (command === "editor.replace") {
       setShowFind(true);
       setShowReplace(true);
-    } else if (command === "editor.gotoLine") setShowGotoLine(true);
+    }     else if (command === "editor.gotoLine") setShowGotoLine(true);
+    else if (command === "editor.gotoStart" && textareaRef.current) {
+      textareaRef.current.focus();
+      textareaRef.current.selectionStart = 0;
+      textareaRef.current.selectionEnd = 0;
+      textareaRef.current.scrollTop = 0;
+      setCursorLine(0);
+    }
+    else if (command === "editor.gotoEnd" && textareaRef.current) {
+      textareaRef.current.focus();
+      const len = textRef.current.length;
+      textareaRef.current.selectionStart = len;
+      textareaRef.current.selectionEnd = len;
+      textareaRef.current.scrollTop = textareaRef.current.scrollHeight;
+      setCursorLine(textRef.current.split("\n").length - 1);
+    }
   }, [openSettings]);
 
   useEffect(() => {

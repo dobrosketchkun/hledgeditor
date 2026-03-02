@@ -14,7 +14,12 @@ A desktop editor for hledger journal files with syntax highlighting and real-tim
   - Multiple inferred amounts
   - Bad indentation
 - **Typo detection** — flags accounts used only once that look similar to other accounts, with one-click autocorrect
-- **File operations** — Open, save, Save As, recent files list
+- **Customizable Theming & Settings** — Dark/Light themes, configurable font sizes, and custom hotkeys mapping
+- **Smart Account Autocomplete** — Inline "ghost text" suggestions based on accounts used in your journals, supporting fuzzy/prefix matching
+- **Multi-file `include` support** — Automatically resolves and parses `include` files so suggestions and typochecks span your entire ledger
+- **Auto-save & Crash Recovery** — Optional background auto-save and continuous crash-safe backups
+- **Find, Replace & Go-to-Line** — In-editor search panel with regex support
+- **Drag & Drop** — Drag journal files directly into the window to open them
 - **External change detection** — notifies you if the file is modified by another program (e.g. hledger add)
 - **File association** — can be set as the default editor for `.journal` files
 - **Accounts sidebar** — shows all accounts grouped by type with usage counts
@@ -66,8 +71,8 @@ This will build for your current platform. On macOS you'll get a `.dmg`, on Linu
 ### Opening files
 
 - **File > Open** (Ctrl+O) — opens a file picker filtered to `.journal`, `.hledger`, and `.j` files
-- **File > Open Recent** — shows your last 10 opened files
-- **Drag and drop** — not yet implemented, use the menu
+- **Drag and drop** — Drop journal files anywhere in the editor window to open them
+- **Environment Variable** — Automatically opens the file pointed to by your `LEDGER_FILE` environment variable on startup
 - **Command line** — `hledger-editor myfile.journal` (after building)
 - **File association** — after installing, you can set `.journal` files to open with hledger Editor
 
@@ -75,10 +80,14 @@ This will build for your current platform. On macOS you'll get a `.dmg`, on Linu
 
 The editor works like any text editor. A few specifics:
 
+- **Autocomplete** — As you type account names, ghost text will suggest existing accounts. Press `Tab`, `Enter`, or `ArrowRight` to accept. Use `ArrowUp` or `ArrowDown` to cycle matches.
 - **Tab** inserts 4 spaces (hledger requires space indentation)
 - Errors appear in real-time in the problems panel at the bottom
 - Click any problem to jump to that line
 - Typo warnings have a **Fix** button that renames the account throughout the file
+- **Ctrl+F** / **Ctrl+H** for Find and Replace (with regex support)
+- **Ctrl+G** for Go To Line
+- **Ctrl+Home** / **Ctrl+End** to jump to the start or end of the file
 
 ### Saving
 
@@ -97,12 +106,14 @@ If another program modifies the file (e.g., you ran `hledger add` in a terminal)
 hledger-editor/
 ├── electron/
 │   ├── main.js          # Electron main process (windows, menus, file I/O)
-│   └── preload.js       # Secure IPC bridge
+│   ├── preload.js       # Secure IPC bridge
+│   └── settings.js      # App settings & defaults management
 ├── src/
 │   ├── index.html       # HTML shell
 │   ├── main.jsx         # React entry point
 │   ├── App.jsx          # Editor UI component
-│   └── parser.js        # hledger journal parser + highlighter
+│   ├── parser.js        # hledger journal parser + highlighter
+│   └── themes/          # Light and dark color schemes
 ├── package.json
 ├── vite.config.js
 └── README.md

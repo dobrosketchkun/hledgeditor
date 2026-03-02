@@ -21,17 +21,19 @@ const DEFAULT_SETTINGS = {
     backupIntervalSec: 30,
     keepBackups: 20,
   },
-  shortcuts: {
-    "file.open": "Ctrl+O",
-    "file.save": "Ctrl+S",
-    "file.saveAs": "Ctrl+Shift+S",
-    "file.new": "Ctrl+N",
-    "help.hotkeys": "F1",
-    "editor.find": "Ctrl+F",
-    "editor.replace": "Ctrl+H",
-    "editor.gotoLine": "Ctrl+G",
-    "app.settings": "Ctrl+,",
-  },
+    shortcuts: {
+      "file.open": "Ctrl+O",
+      "file.save": "Ctrl+S",
+      "file.saveAs": "Ctrl+Shift+S",
+      "file.new": "Ctrl+N",
+      "help.hotkeys": "F1",
+      "editor.find": "Ctrl+F",
+      "editor.replace": "Ctrl+H",
+      "editor.gotoLine": "Ctrl+G",
+      "editor.gotoStart": "Ctrl+Home",
+      "editor.gotoEnd": "Ctrl+End",
+      "app.settings": "Ctrl+,",
+    },
 };
 
 function getSettingsPath() {
