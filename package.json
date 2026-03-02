@@ -6,7 +6,7 @@
   "scripts": {
     "dev": "concurrently \"vite\" \"wait-on http://localhost:5173 && electron .\"",
     "build:renderer": "vite build",
-    "build:win": "npm run build:renderer && set CSC_IDENTITY_AUTO_DISCOVERY=false&& electron-builder --win --config.win.signAndEditExecutable=false && node scripts/embed-icon.js",
+    "build:win": "node scripts/generate-ico.js && npm run build:renderer && set CSC_IDENTITY_AUTO_DISCOVERY=false&& electron-builder --win --config.win.signAndEditExecutable=false && node scripts/embed-icon.js",
     "build": "npm run build:renderer && electron-builder"
   },
   "build": {
@@ -26,7 +26,9 @@
     },
     "nsis": {
       "oneClick": false,
-      "allowToChangeInstallationDirectory": true
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico"
     },
     "fileAssociations": [
       {
