@@ -23,6 +23,7 @@ export const darkTheme = {
     panelBg: "#1e2127",
     accent: "#61afef",
     accentSoft: "rgba(97,175,239,0.26)",
+    ghostText: "#5c6370",
     banner: "#2a1f14",
     bannerBorder: "#5c4a32",
     overlay: "rgba(8, 10, 14, 0.55)",

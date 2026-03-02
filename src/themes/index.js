@@ -35,6 +35,7 @@ export function themeCssVars(theme) {
     "--panelBg": colors.panelBg,
     "--accent": colors.accent,
     "--accentSoft": colors.accentSoft,
+    "--ghostText": colors.ghostText,
     "--banner": colors.banner,
     "--bannerBorder": colors.bannerBorder,
     "--overlay": colors.overlay,

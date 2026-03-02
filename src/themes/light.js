@@ -23,6 +23,7 @@ export const lightTheme = {
     panelBg: "#ffffff",
     accent: "#2f6fff",
     accentSoft: "rgba(47,111,255,0.20)",
+    ghostText: "#bac3d6",
     banner: "#fff6e9",
     bannerBorder: "#e6c899",
     overlay: "rgba(20, 30, 44, 0.35)",

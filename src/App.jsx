@@ -27,6 +27,7 @@ const C = {
   panelBg: "var(--panelBg)",
   accent: "var(--accent)",
   accentSoft: "var(--accentSoft)",
+  ghostText: "var(--ghostText)",
   banner: "var(--banner)",
   bannerBorder: "var(--bannerBorder)",
   overlay: "var(--overlay)",
@@ -696,6 +697,101 @@ function computeDirtyLines(currentText, baselineText) {
   return dirty;
 }
 
+function buildAccountSuggestionModel(fullText, cursorPos, accountNames, prevSuggest) {
+  const text = String(fullText || "");
+  const pos = Math.max(0, Math.min(cursorPos || 0, text.length));
+  const lineStart = text.lastIndexOf("\n", Math.max(0, pos - 1)) + 1;
+  const lineEndRaw = text.indexOf("\n", pos);
+  const lineEnd = lineEndRaw === -1 ? text.length : lineEndRaw;
+  const line = text.slice(lineStart, lineEnd);
+
+  if (!/^\s/.test(line)) return null;
+  const commentPos = line.indexOf(";");
+  const localPos = pos - lineStart;
+  if (commentPos >= 0 && localPos > commentPos) return null;
+
+  const lineNoComment = line.replace(/\s+;.*$/, "");
+  const indentLen = ((lineNoComment.match(/^(\s*)/) || [""])[0]).length;
+  let body = lineNoComment.slice(indentLen);
+  let statusPrefixLen = 0;
+  const statusMatch = body.match(/^([*!])\s+/);
+  if (statusMatch) {
+    statusPrefixLen = statusMatch[0].length;
+    body = body.slice(statusPrefixLen);
+  }
+
+  let bodyCaret = localPos - indentLen - statusPrefixLen;
+  if (bodyCaret < 0) return null;
+
+  const amountSepPos = body.search(/\s{2,}/);
+  const accountEnd = amountSepPos >= 0 ? amountSepPos : body.length;
+  // If caret is after account token (eg user typed spaces), clamp to account end so suggestions still work.
+  if (bodyCaret > accountEnd) bodyCaret = accountEnd;
+
+  const typed = body.slice(0, bodyCaret);
+  if (!typed || /\s/.test(typed)) return null;
+
+  const typedLower = typed.toLowerCase();
+  let matches = accountNames.filter((acct) => acct.toLowerCase().startsWith(typedLower));
+  if (matches.length === 0) {
+    // Fallback: match by last account segment prefix.
+    matches = accountNames.filter((acct) => {
+      const tail = acct.split(":").pop() || "";
+      return tail.toLowerCase().startsWith(typedLower);
+    });
+  }
+
+  // Sort matches to put exact matches at the end, so longer suggestions appear first
+  matches.sort((a, b) => {
+    const aExact = a.toLowerCase() === typedLower;
+    const bExact = b.toLowerCase() === typedLower;
+    if (aExact && !bExact) return 1;
+    if (!aExact && bExact) return -1;
+    return a.length - b.length || a.localeCompare(b);
+  });
+
+  // Filter out the exact match if it's the ONLY match, to avoid useless ghost state
+  if (matches.length === 1 && matches[0].toLowerCase() === typedLower) {
+    return null;
+  }
+
+  matches = matches.slice(0, 8);
+  if (matches.length === 0) return null;
+
+  const replaceStart = lineStart + indentLen + statusPrefixLen;
+  const replaceEnd = replaceStart + accountEnd;
+  const sameAnchor =
+    prevSuggest &&
+    prevSuggest.replaceStart === replaceStart &&
+    prevSuggest.replaceEnd === replaceEnd &&
+    prevSuggest.typed === typed;
+
+  return {
+    lineIdx: text.slice(0, lineStart).split("\n").length - 1,
+    replaceStart,
+    replaceEnd,
+    typed,
+    matches,
+    selectedIndex: sameAnchor ? Math.min(prevSuggest.selectedIndex || 0, matches.length - 1) : 0,
+  };
+}
+
+function sameAccountSuggestion(a, b) {
+  if (a === b) return true;
+  if (!a || !b) return false;
+  if (a.lineIdx !== b.lineIdx) return false;
+  if (a.replaceStart !== b.replaceStart || a.replaceEnd !== b.replaceEnd) return false;
+  if (a.typed !== b.typed) return false;
+  if ((a.selectedIndex || 0) !== (b.selectedIndex || 0)) return false;
+  const am = a.matches || [];
+  const bm = b.matches || [];
+  if (am.length !== bm.length) return false;
+  for (let i = 0; i < am.length; i++) {
+    if (am[i] !== bm[i]) return false;
+  }
+  return true;
+}
+
 /* ─── Main Editor ────────────────────────────────────────────────── */
 
 export default function App() {
@@ -1134,46 +1230,11 @@ export default function App() {
     if (!textareaRef.current) return;
     const pos = textareaRef.current.selectionStart;
     const upTo = text.slice(0, pos);
-    setCursorLine(upTo.split("\n").length - 1);
-    const lineStart = text.lastIndexOf("\n", pos - 1) + 1;
-    const lineEndRaw = text.indexOf("\n", pos);
-    const lineEnd = lineEndRaw === -1 ? text.length : lineEndRaw;
-    const line = text.slice(lineStart, lineEnd);
-    if (!/^\s/.test(line)) {
-      setAccountSuggest(null);
-      return;
-    }
-
-    const localPos = pos - lineStart;
-    const before = line.slice(0, localPos);
-    const indent = (line.match(/^(\s*)/) || [""])[0];
-    const accountPart = before.slice(indent.length);
-    if (accountPart.includes("  ")) {
-      setAccountSuggest(null);
-      return;
-    }
-
-    const prefix = accountPart.trimStart();
-    if (!prefix) {
-      setAccountSuggest(null);
-      return;
-    }
-
-    const matches = accountNames
-      .filter((acct) => acct.toLowerCase().startsWith(prefix.toLowerCase()))
-      .slice(0, 6);
-
-    if (matches.length === 0) {
-      setAccountSuggest(null);
-      return;
-    }
-
-    const prefixStartInLine = indent.length + accountPart.length - prefix.length;
-    setAccountSuggest({
-      matches,
-      start: lineStart + prefixStartInLine,
-      end: pos,
-      prefix,
+    const currentLineIdx = upTo.split("\n").length - 1;
+    setCursorLine(currentLineIdx);
+    setAccountSuggest((prev) => {
+      const next = buildAccountSuggestionModel(text, pos, accountNames, prev);
+      return sameAccountSuggestion(prev, next) ? prev : next;
     });
   }, [text, accountNames]);
 
@@ -1234,6 +1295,7 @@ export default function App() {
         .seg-ac { color: ${C.account}; }
         .seg-am { color: ${C.amount}; font-weight: 600; }
         .seg-cm { color: ${C.comment}; font-style: italic; }
+        .seg-gh { color: ${C.ghostText}; }
         .line-error { background: ${C.errorBg}; }
         .line-warning { background: ${C.warningBg}; }
         .textarea-editor::selection { background: ${C.selection}; color: ${C.selectionText}; }
@@ -1307,6 +1369,22 @@ export default function App() {
                 {hl.segments.map((seg, j) => (
                   <span key={j} className={seg.cls ? `seg-${seg.cls}` : undefined}>{seg.text}</span>
                 ))}
+                {accountSuggest?.lineIdx === i &&
+                  accountSuggest?.matches?.length > 0 &&
+                  (() => {
+                    const chosen =
+                      accountSuggest.matches[accountSuggest.selectedIndex || 0] ||
+                      accountSuggest.matches[0];
+                    const typed = accountSuggest.typed || "";
+                    if (!chosen.toLowerCase().startsWith(typed.toLowerCase())) return null;
+                    const suffix = chosen.slice(typed.length);
+                    if (!suffix) return null;
+                    return (
+                    <span className="seg-gh">
+                      {suffix}
+                    </span>
+                    );
+                  })()}
               </div>
             ))}
           </div>
@@ -1323,18 +1401,52 @@ export default function App() {
             spellCheck={false}
             style={{ position: "absolute", left: 52, top: 0, right: 0, bottom: 0, fontFamily: FONT, fontSize, lineHeight: lineHeight + "px", paddingTop: 8, paddingLeft: 12, paddingRight: 12, color: "transparent", caretColor: C.cursor, background: "transparent", border: "none", outline: "none", resize: "none", whiteSpace: "pre", overflowWrap: "normal", overflow: "auto", zIndex: 2, width: "calc(100% - 52px)", tabSize: 4 }}
             onKeyDown={(e) => {
-              if ((e.key === "Tab" || e.key === "Enter") && accountSuggest?.matches?.length) {
+              if (accountSuggest?.matches?.length) {
+                if (e.key === "ArrowDown") {
+                  e.preventDefault();
+                  setAccountSuggest((prev) => {
+                    if (!prev?.matches?.length) return prev;
+                    return {
+                      ...prev,
+                      selectedIndex: ((prev.selectedIndex || 0) + 1) % prev.matches.length,
+                    };
+                  });
+                  return;
+                }
+                if (e.key === "ArrowUp") {
+                  e.preventDefault();
+                  setAccountSuggest((prev) => {
+                    if (!prev?.matches?.length) return prev;
+                    return {
+                      ...prev,
+                      selectedIndex:
+                        ((prev.selectedIndex || 0) - 1 + prev.matches.length) % prev.matches.length,
+                    };
+                  });
+                  return;
+                }
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  setAccountSuggest(null);
+                  return;
+                }
+              }
+
+              if ((e.key === "Tab" || e.key === "Enter" || e.key === "ArrowRight") && accountSuggest?.matches?.length) {
                 e.preventDefault();
-                const chosen = accountSuggest.matches[0];
+                const chosen = accountSuggest.matches[accountSuggest.selectedIndex || 0] || accountSuggest.matches[0];
                 const content = textRef.current;
-                const next = content.slice(0, accountSuggest.start) + chosen + content.slice(accountSuggest.end);
-                const caret = accountSuggest.start + chosen.length;
+                const next = content.slice(0, accountSuggest.replaceStart) + chosen + content.slice(accountSuggest.replaceEnd);
+                const caret = accountSuggest.replaceStart + chosen.length;
                 handleTextChange(next);
+                setAccountSuggest(null);
                 requestAnimationFrame(() => {
                   if (textareaRef.current) {
                     textareaRef.current.selectionStart = caret;
                     textareaRef.current.selectionEnd = caret;
-                    updateCursorLine();
+                    const rebuilt = buildAccountSuggestionModel(next, caret, accountNames, null);
+                    setAccountSuggest(rebuilt);
+                    setCursorLine(next.slice(0, caret).split("\n").length - 1);
                   }
                 });
                 return;
@@ -1351,33 +1463,6 @@ export default function App() {
               }
             }}
           />
-          {accountSuggest?.matches?.length > 0 && (
-            <div
-              style={{
-                position: "absolute",
-                left: 64,
-                bottom: 10,
-                zIndex: 5,
-                minWidth: 280,
-                maxWidth: 420,
-                background: C.panelBg,
-                border: `1px solid ${C.border}`,
-                borderRadius: 6,
-                boxShadow: "0 8px 26px rgba(0,0,0,0.35)",
-                fontFamily: FONT,
-                fontSize: 11,
-              }}
-            >
-              <div style={{ padding: "4px 8px", color: C.gutterActive, borderBottom: `1px solid ${C.border}` }}>
-                Account suggestions (Tab/Enter to accept)
-              </div>
-              {accountSuggest.matches.map((acct, idx) => (
-                <div key={acct + idx} style={{ padding: "4px 8px", color: C.text, borderBottom: idx === accountSuggest.matches.length - 1 ? "none" : `1px solid ${C.border}` }}>
-                  {acct}
-                </div>
-              ))}
-            </div>
-          )}
         </div>
         <AccountsSidebar transactions={transactionsForAnalysis} />
       </div>
