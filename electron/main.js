@@ -91,7 +91,7 @@ function updateTitle() {
   if (!mainWindow) return;
   const name = currentFilePath ? path.basename(currentFilePath) : "Untitled";
   const modified = unsavedChanges ? " •" : "";
-  mainWindow.setTitle(`${name}${modified} — hledger Editor`);
+  mainWindow.setTitle(`${name}${modified} — hledgeditor`);
 }
 
 // ─── Menu ──────────────────────────────────────────────────────────
@@ -373,9 +373,10 @@ function createWindow() {
     minWidth: 700,
     minHeight: 500,
     backgroundColor: "#1a1d23",
-    title: "hledger Editor",
+    title: "hledgeditor",
     frame: false,
     autoHideMenuBar: true,
+    icon: path.join(__dirname, "../build/icon.png"),
     webPreferences: {
       preload: path.join(__dirname, "preload.js"),
       contextIsolation: true,

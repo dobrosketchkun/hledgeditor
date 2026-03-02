@@ -1,0 +1,53 @@
+; My finances — started 2026-03-01
+
+2026-03-01 Opening balances
+    assets:bank:checking              $5,200.00
+    assets:bank:savings              $12,000.00
+    assets:cash                         $340.00
+    liabilities:credit card           $-1,850.00
+    equity:opening balances
+
+2026-03-02 Grocery store
+    expenses:food:groceries             $67.30
+    assets:bank:checking
+
+2026-03-03 Gas station
+    expenses:transport:fuel             $45.00
+    liabilities:credit card
+
+2026-03-05 Netflix subscription
+    expenses:subscriptions              $15.99
+    assets:bank:checking
+
+2026-03-08 Coffee shop  ; paid cash
+    expenses:food:cofee                  $5.50
+    assets:cash
+
+2026-03-15 Salary from employer
+    assets:bank:checking             $3,800.00
+    income:salary
+
+2026-03-18 Electric bill
+    expenses:housing:electric          $110.00
+    assets:bank:chec
+
+2026-03-20 Credit card payment
+    liabilities:credit card           $1,850.00
+    assets:bank:checking
+
+2026-03-22 Transfer to savings
+    assets:bank:savings              $1,000.00
+    assets:bank:checking
+
+2026-03-25 Freelance payment from client
+    assets:bank:checking               $500.00
+    income:freelance
+
+2026-03-28 New headphones
+    expenses:shopping                  $149.99
+    assets:bank:checking
+
+
+2026-03-28 New headphones
+    expenses:shopping                  $149.99
+    assets:bank:checking

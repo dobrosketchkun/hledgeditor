@@ -1,8 +1,8 @@
-# hledger Editor
+# hledgeditor
 
 A desktop editor for hledger journal files with syntax highlighting and real-time error checking.
 
-![hledger editor screenshot placeholder]
+![Main Screen](misc/main_screen.png)
 
 ## Features
 
@@ -35,7 +35,7 @@ A desktop editor for hledger journal files with syntax highlighting and real-tim
 
 ```bash
 # Clone or extract the project, then:
-cd hledger-editor
+cd hledgeditor
 npm install
 ```
 
@@ -67,14 +67,16 @@ npm run build
 
 This will build for your current platform. On macOS you'll get a `.dmg`, on Linux an `.AppImage`.
 
+![Setting Screen](misc/settings.png)
+
 ## Usage
 
 ### Opening files
 
 - **File > Open** (Ctrl+O) — opens a file picker filtered to `.journal`, `.hledger`, and `.j` files
 - **Drag and drop** — Drop journal files anywhere in the editor window to open them
-- **Command line** — `hledger-editor myfile.journal` (after building)
-- **File association** — after installing, you can set `.journal` files to open with hledger Editor
+- **Command line** — `hledgeditor myfile.journal` (after building)
+- **File association** — after installing, you can set `.journal` files to open with hledgeditor
 
 ### Editing
 
@@ -93,7 +95,6 @@ The editor works like any text editor. A few specifics:
 
 - **Ctrl+S** — Save (or Save As if untitled)
 - **Ctrl+Shift+S** — Save As
-- The title bar shows a dot (•) when you have unsaved changes
 - You'll be prompted to save when closing or opening a new file
 
 ### External changes
@@ -103,7 +104,7 @@ If another program modifies the file (e.g., you ran `hledger add` in a terminal)
 ## Project structure
 
 ```
-hledger-editor/
+hledgeditor/
 ├── electron/
 │   ├── main.js          # Electron main process (windows, menus, file I/O)
 │   ├── preload.js       # Secure IPC bridge

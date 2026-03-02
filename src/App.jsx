@@ -648,7 +648,7 @@ function TitleBar({ filePath, onHelp, onSettings, isMaximized, onMinimize, onTog
         flexShrink: 0,
       }}
     >
-      <span style={{ color: C.accent, fontSize: 11, fontWeight: 700, letterSpacing: "0.04em" }}>hledger</span>
+      <span style={{ color: C.accent, fontSize: 11, fontWeight: 700, letterSpacing: "0.04em" }}>hledgeditor</span>
       <span style={{ color: C.gutterText, fontSize: 11, marginLeft: 8, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "45vw" }}>
         {displayPath}
       </span>
@@ -1352,7 +1352,7 @@ export default function App() {
         />
       ) : (
         <div style={{ height: 34, background: C.panelBg, borderBottom: `1px solid ${C.border}`, display: "flex", alignItems: "center", padding: "0 10px", gap: 10, flexShrink: 0, fontFamily: FONT }}>
-          <span style={{ color: C.accent, fontWeight: 700, fontSize: 11 }}>hledger</span>
+          <span style={{ color: C.accent, fontWeight: 700, fontSize: 11 }}>hledgeditor</span>
           <div style={{ flex: 1 }} />
           <button onClick={openSettings} style={{ width: 24, height: 24, borderRadius: 4, border: `1px solid ${C.border}`, background: "transparent", color: C.gutterActive, fontWeight: 700, fontFamily: FONT, cursor: "pointer", fontSize: 12 }}>
             *
