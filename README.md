@@ -20,6 +20,7 @@ A desktop editor for hledger journal files with syntax highlighting and real-tim
 - **Auto-save & Crash Recovery** — Optional background auto-save and continuous crash-safe backups
 - **Find, Replace & Go-to-Line** — In-editor search panel with regex support
 - **Drag & Drop** — Drag journal files directly into the window to open them
+- **Environment Variable Support** — Automatically opens the file pointed to by your `LEDGER_FILE` on startup
 - **External change detection** — notifies you if the file is modified by another program (e.g. hledger add)
 - **File association** — can be set as the default editor for `.journal` files
 - **Accounts sidebar** — shows all accounts grouped by type with usage counts
@@ -72,7 +73,6 @@ This will build for your current platform. On macOS you'll get a `.dmg`, on Linu
 
 - **File > Open** (Ctrl+O) — opens a file picker filtered to `.journal`, `.hledger`, and `.j` files
 - **Drag and drop** — Drop journal files anywhere in the editor window to open them
-- **Environment Variable** — Automatically opens the file pointed to by your `LEDGER_FILE` environment variable on startup
 - **Command line** — `hledger-editor myfile.journal` (after building)
 - **File association** — after installing, you can set `.journal` files to open with hledger Editor
 
