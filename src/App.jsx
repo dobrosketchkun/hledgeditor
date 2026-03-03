@@ -206,7 +206,7 @@ function ErrorPanel({ errors, warnings, onClickError, onAutofix, panelMode, setP
 
 /* ─── Accounts Sidebar ───────────────────────────────────────────── */
 
-function AccountsSidebar({ transactions }) {
+function AccountsSidebar({ transactions, highlightedAccounts, onClickAccount }) {
   const counts = collectAccounts(transactions);
   const grouped = {};
   for (const [acct, count] of Object.entries(counts)) {
@@ -227,12 +227,31 @@ function AccountsSidebar({ transactions }) {
       {sorted.map((group) => (
         <div key={group} style={{ padding: "8px 0" }}>
           <div style={{ padding: "2px 14px 4px", fontWeight: 700, fontSize: 10, textTransform: "uppercase", letterSpacing: "0.06em", color: colors[group] || C.gutterActive }}>{group}</div>
-          {grouped[group].sort((a, b) => a.acct.localeCompare(b.acct)).map(({ acct, count }) => (
-            <div key={acct} style={{ padding: "2px 14px 2px 22px", color: C.text, display: "flex", justifyContent: "space-between", opacity: count === 1 ? 0.6 : 1 }}>
-              <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginRight: 8 }}>{acct.replace(/^[^:]+:/, "")}</span>
-              <span style={{ color: C.gutterText, flexShrink: 0 }}>{count}</span>
-            </div>
-          ))}
+          {grouped[group].sort((a, b) => a.acct.localeCompare(b.acct)).map(({ acct, count }) => {
+            const isActive = highlightedAccounts.has(acct);
+            return (
+              <div
+                key={acct}
+                onClick={(e) => onClickAccount?.(acct, e)}
+                style={{
+                  padding: "2px 14px 2px 22px",
+                  color: isActive ? C.accent : C.text,
+                  display: "flex",
+                  justifyContent: "space-between",
+                  opacity: isActive ? 1 : count === 1 ? 0.6 : 1,
+                  cursor: "pointer",
+                  background: isActive ? C.accentSoft : "transparent",
+                  borderLeft: isActive ? `3px solid ${C.accent}` : "3px solid transparent",
+                  transition: "background 0.12s, border-color 0.12s",
+                }}
+                onMouseEnter={(e) => { if (!isActive) e.currentTarget.style.background = C.bgLight; }}
+                onMouseLeave={(e) => { if (!isActive) e.currentTarget.style.background = "transparent"; }}
+              >
+                <span style={{ overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", marginRight: 8 }}>{acct.replace(/^[^:]+:/, "")}</span>
+                <span style={{ color: C.gutterText, flexShrink: 0 }}>{count}</span>
+              </div>
+            );
+          })}
         </div>
       ))}
     </div>
@@ -1068,6 +1087,7 @@ export default function App() {
   const [flashLine, setFlashLine] = useState(null);
   const flashTimerRef = useRef(null);
   const [panelMode, setPanelMode] = useState("peek");
+  const [highlightedAccounts, setHighlightedAccounts] = useState(new Set());
   const textRef = useRef(text); // always-current ref for IPC
   const filePathRef = useRef(filePath);
 
@@ -1500,6 +1520,18 @@ export default function App() {
     [typoWarnings]
   );
   const dirtyLines = useMemo(() => computeDirtyLines(text, baselineText), [text, baselineText]);
+  const accountHighlightLines = useMemo(() => {
+    if (highlightedAccounts.size === 0) return new Set();
+    const set = new Set();
+    for (let i = 0; i < lines.length; i++) {
+      if (/^\s/.test(lines[i])) {
+        for (const acct of highlightedAccounts) {
+          if (lines[i].includes(acct)) { set.add(i); break; }
+        }
+      }
+    }
+    return set;
+  }, [highlightedAccounts, lines]);
 
   const allErrors = [];
   const allWarnings = [...rootTypoWarnings];
@@ -1606,6 +1638,7 @@ export default function App() {
         .seg-gh { color: ${C.ghostText}; }
         .line-error { background: ${C.errorBg}; }
         .line-warning { background: ${C.warningBg}; }
+        .line-account-hl { background: ${C.accentSoft}; }
         .find-hit-active { background: ${C.selection}; color: ${C.selectionText}; border-radius: 2px; }
         .textarea-editor::selection { background: ${C.selection}; color: ${C.selectionText}; }
         @keyframes line-flash-anim {
@@ -1660,7 +1693,7 @@ export default function App() {
               const isErr = errorLines.has(i);
               const isWarn = !isErr && warningLines.has(i);
               return (
-                <div key={i} style={{ height: lineHeight, lineHeight: lineHeight + "px", fontFamily: FONT, fontSize: 11, textAlign: "right", paddingRight: 8, color: i === cursorLine ? C.gutterActive : isErr ? C.error : isWarn ? C.warning : C.gutterText, fontWeight: i === cursorLine ? 600 : 400, position: "relative" }}>
+                <div key={i} style={{ height: lineHeight, lineHeight: lineHeight + "px", fontFamily: FONT, fontSize: 11, textAlign: "right", paddingRight: 8, color: i === cursorLine ? C.gutterActive : isErr ? C.error : isWarn ? C.warning : accountHighlightLines.has(i) ? C.accent : C.gutterText, fontWeight: i === cursorLine ? 600 : 400, position: "relative", background: accountHighlightLines.has(i) ? C.accentSoft : "transparent" }}>
                   {settings.editor.showDirtyMarkers && dirtyLines.has(i) && <span style={{ position: "absolute", left: 1, top: 2, width: 3, height: lineHeight - 4, background: C.amount, borderRadius: 2 }} />}
                   {isErr && <span style={{ position: "absolute", left: 6, color: C.error, fontSize: 8, top: 6 }}>●</span>}
                   {isWarn && <span style={{ position: "absolute", left: 5, color: C.warning, fontSize: 9, top: 5 }}>▲</span>}
@@ -1672,8 +1705,10 @@ export default function App() {
 
           {/* Highlight layer */}
           <div ref={highlightRef} aria-hidden="true" style={{ position: "absolute", left: 52, top: 0, right: 0, bottom: 0, overflow: "hidden", paddingTop: 8, paddingLeft: 12, pointerEvents: "none", zIndex: 1 }}>
-            {highlighted.map((hl, i) => (
-              <div key={flashLine === i ? `${i}-flash` : i} className={flashLine === i ? "line-flash" : hl.hasError ? "line-error" : hl.hasWarning ? "line-warning" : ""}
+            {highlighted.map((hl, i) => {
+              const lineCls = flashLine === i ? "line-flash" : hl.hasError ? "line-error" : hl.hasWarning ? "line-warning" : accountHighlightLines.has(i) ? "line-account-hl" : "";
+              return (
+              <div key={flashLine === i ? `${i}-flash` : i} className={lineCls}
                 style={{ height: lineHeight, lineHeight: lineHeight + "px", fontFamily: FONT, fontSize, whiteSpace: "pre", paddingRight: 12 }}>
                 {renderLineWithFindHighlight(hl.segments, lineStartOffsets[i], activeFindRange).map((seg) => {
                   const clsNames = [];
@@ -1702,7 +1737,8 @@ export default function App() {
                     );
                   })()}
               </div>
-            ))}
+              );
+            })}
           </div>
 
           {/* Textarea */}
@@ -1794,7 +1830,22 @@ export default function App() {
             }}
           />
         </div>
-        <AccountsSidebar transactions={transactionsForAnalysis} />
+        <AccountsSidebar
+          transactions={transactionsForAnalysis}
+          highlightedAccounts={highlightedAccounts}
+          onClickAccount={(acct, e) => {
+            setHighlightedAccounts((prev) => {
+              if (e?.ctrlKey || e?.metaKey) {
+                const next = new Set(prev);
+                if (next.has(acct)) next.delete(acct);
+                else next.add(acct);
+                return next;
+              }
+              if (prev.size === 1 && prev.has(acct)) return new Set();
+              return new Set([acct]);
+            });
+          }}
+        />
       </div>
 
       <ErrorPanel errors={allErrors} warnings={allWarnings} onClickError={goToLine} onAutofix={handleAutofix} panelMode={panelMode} setPanelMode={setPanelMode} />
