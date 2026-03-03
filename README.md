@@ -1,6 +1,6 @@
 # hledgeditor
 
-A desktop editor for hledger journal files with syntax highlighting and real-time error checking.
+A desktop editor for hledger journal files with syntax highlighting, real-time error checking, and a custom frameless UI.
 
 ![Main Screen](misc/main_screen.png)
 
@@ -18,12 +18,13 @@ A desktop editor for hledger journal files with syntax highlighting and real-tim
 - **Smart Account Autocomplete** — Inline "ghost text" suggestions based on accounts used in your journals, supporting fuzzy/prefix matching
 - **Multi-file `include` support** — Automatically resolves and parses `include` files so suggestions and typochecks span your entire ledger
 - **Auto-save & Crash Recovery** — Optional background auto-save and continuous crash-safe backups
-- **Find, Replace & Go-to-Line** — In-editor search panel with regex support
+- **Find, Replace & Go-to-Line** — Draggable, non-modal search panel with regex support, find previous/next, and keyboard-driven workflow (Enter/Shift+Enter)
+- **Undo / Redo** — Standard Ctrl+Z / Ctrl+Y (Ctrl+Shift+Z) support
 - **Drag & Drop** — Drag journal files directly into the window to open them
 - **Environment Variable Support** — Automatically opens the file pointed to by your `LEDGER_FILE` on startup
 - **External change detection** — notifies you if the file is modified by another program (e.g. hledger add)
 - **File association** — can be set as the default editor for `.journal` files
-- **Accounts sidebar** — shows all accounts grouped by type with usage counts
+- **Accounts sidebar** — shows all accounts grouped by type with usage counts; click an account to highlight all its lines in the editor (Ctrl+click to multi-select)
 - **Collapsible problems panel** — three display modes (collapsed / peek / expanded)
 
 ## Requirements
@@ -87,7 +88,9 @@ The editor works like any text editor. A few specifics:
 - Errors appear in real-time in the problems panel at the bottom
 - Click any problem to jump to that line
 - Typo warnings have a **Fix** button that renames the account throughout the file
-- **Ctrl+F** / **Ctrl+H** for Find and Replace (with regex support)
+- **Ctrl+Z** / **Ctrl+Y** to undo/redo
+- **Ctrl+F** for Find — a draggable floating panel; press Enter for next match, Shift+Enter for previous
+- **Ctrl+H** for Find & Replace — same panel with replace/replace-all buttons
 - **Ctrl+G** for Go To Line
 - **Ctrl+Home** / **Ctrl+End** to jump to the start or end of the file
 
@@ -115,6 +118,11 @@ hledgeditor/
 │   ├── App.jsx          # Editor UI component
 │   ├── parser.js        # hledger journal parser + highlighter
 │   └── themes/          # Light and dark color schemes
+├── build/
+│   └── icon.png          # App icon source
+├── scripts/
+│   ├── generate-ico.js   # Pre-build: PNG → ICO conversion
+│   └── embed-icon.js     # Post-build: embeds icon into the .exe via rcedit
 ├── package.json
 ├── vite.config.js
 └── README.md
