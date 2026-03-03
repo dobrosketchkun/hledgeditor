@@ -1096,6 +1096,12 @@ export default function App() {
   const [cursorLine, setCursorLine] = useState(0);
   const [flashLine, setFlashLine] = useState(null);
   const flashTimerRef = useRef(null);
+  const undoRef = useRef({
+    stack: [{ text: "", selStart: 0, selEnd: 0 }],
+    index: 0,
+    lastChangeTime: 0,
+    lastChangeType: null,
+  });
   const [panelMode, setPanelMode] = useState("peek");
   const [highlightedAccounts, setHighlightedAccounts] = useState(new Set());
   const textRef = useRef(text); // always-current ref for IPC
@@ -1190,6 +1196,12 @@ export default function App() {
       setFilePath(fp);
       setBaselineText(content);
       setShowExternalChange(false);
+      undoRef.current = {
+        stack: [{ text: content, selStart: 0, selEnd: 0 }],
+        index: 0,
+        lastChangeTime: 0,
+        lastChangeType: null,
+      };
     });
 
     api.onFileSaved((fp) => {
@@ -1227,11 +1239,71 @@ export default function App() {
     });
   }, []);
 
-  const handleTextChange = useCallback((newText) => {
+  const handleTextChange = useCallback((newText, changeType = "typing", selStart, selEnd) => {
+    if (selStart === undefined) {
+      selStart = textareaRef.current?.selectionStart ?? 0;
+      selEnd = textareaRef.current?.selectionEnd ?? selStart;
+    }
+    if (selEnd === undefined) selEnd = selStart;
+
+    const undo = undoRef.current;
+    const now = Date.now();
+    const isTyping = changeType === "typing";
+    const wasTyping = undo.lastChangeType === "typing";
+    const recentEnough = (now - undo.lastChangeTime) < 1000;
+
+    if (isTyping && wasTyping && recentEnough) {
+      undo.stack[undo.index] = { text: newText, selStart, selEnd };
+    } else {
+      undo.stack = undo.stack.slice(0, undo.index + 1);
+      undo.stack.push({ text: newText, selStart, selEnd });
+      undo.index++;
+      if (undo.stack.length > 500) {
+        undo.stack.shift();
+        undo.index--;
+      }
+    }
+    undo.lastChangeTime = now;
+    undo.lastChangeType = changeType;
+
     setText(newText);
     if (window.electronAPI) {
       window.electronAPI.notifyContentChanged();
     }
+  }, []);
+
+  const performUndo = useCallback(() => {
+    const undo = undoRef.current;
+    if (undo.index <= 0) return;
+    undo.index--;
+    undo.lastChangeType = null;
+    const state = undo.stack[undo.index];
+    setText(state.text);
+    if (window.electronAPI) window.electronAPI.notifyContentChanged();
+    requestAnimationFrame(() => {
+      if (textareaRef.current) {
+        textareaRef.current.selectionStart = state.selStart;
+        textareaRef.current.selectionEnd = state.selEnd;
+        setCursorLine(state.text.slice(0, state.selStart).split("\n").length - 1);
+      }
+    });
+  }, []);
+
+  const performRedo = useCallback(() => {
+    const undo = undoRef.current;
+    if (undo.index >= undo.stack.length - 1) return;
+    undo.index++;
+    undo.lastChangeType = null;
+    const state = undo.stack[undo.index];
+    setText(state.text);
+    if (window.electronAPI) window.electronAPI.notifyContentChanged();
+    requestAnimationFrame(() => {
+      if (textareaRef.current) {
+        textareaRef.current.selectionStart = state.selStart;
+        textareaRef.current.selectionEnd = state.selEnd;
+        setCursorLine(state.text.slice(0, state.selStart).split("\n").length - 1);
+      }
+    });
   }, []);
 
   const openSettings = useCallback(() => {
@@ -1330,7 +1402,7 @@ export default function App() {
     if (selected && regex.test(selected)) {
       const replaced = selected.replace(regex, replaceQuery);
       const next = content.slice(0, s) + replaced + content.slice(e);
-      handleTextChange(next);
+      handleTextChange(next, "command", s, s + replaced.length);
       requestAnimationFrame(() => {
         if (textareaRef.current) {
           textareaRef.current.selectionStart = s;
@@ -1346,7 +1418,7 @@ export default function App() {
     if (!findQuery) return;
     const { regex } = getSearchRegex(findQuery, true);
     if (!regex) return;
-    handleTextChange(textRef.current.replace(regex, replaceQuery));
+    handleTextChange(textRef.current.replace(regex, replaceQuery), "command");
   }, [findQuery, replaceQuery, handleTextChange, getSearchRegex]);
 
   const runCommand = useCallback((command) => {
@@ -1415,18 +1487,19 @@ export default function App() {
       const newBlock = newLines.join("\n");
       const newText = content.slice(0, startLineOffset) + newBlock + content.slice(startLineOffset + oldBlock.length);
 
-      handleTextChange(newText);
+      let newSelStart, newSelEnd;
+      if (selStart === selEnd) {
+        const lineDiff = newLines[0].length - targetLines[0].length;
+        newSelStart = newSelEnd = Math.max(startLineOffset, selStart + lineDiff);
+      } else {
+        newSelStart = startLineOffset;
+        newSelEnd = startLineOffset + newBlock.length;
+      }
+      handleTextChange(newText, "command", newSelStart, newSelEnd);
       requestAnimationFrame(() => {
         if (textareaRef.current) {
-          if (selStart === selEnd) {
-            const lineDiff = newLines[0].length - targetLines[0].length;
-            const newPos = Math.max(startLineOffset, selStart + lineDiff);
-            textareaRef.current.selectionStart = newPos;
-            textareaRef.current.selectionEnd = newPos;
-          } else {
-            textareaRef.current.selectionStart = startLineOffset;
-            textareaRef.current.selectionEnd = startLineOffset + newBlock.length;
-          }
+          textareaRef.current.selectionStart = newSelStart;
+          textareaRef.current.selectionEnd = newSelEnd;
         }
       });
     }
@@ -1465,11 +1538,11 @@ export default function App() {
       const diff = newHeader.length - headerLine.length;
       allLines[headerIdx] = newHeader;
       const newText = allLines.join("\n");
+      const newPos = Math.max(0, pos + diff);
 
-      handleTextChange(newText);
+      handleTextChange(newText, "command", newPos, newPos);
       requestAnimationFrame(() => {
         if (textareaRef.current) {
-          const newPos = Math.max(0, pos + diff);
           textareaRef.current.selectionStart = newPos;
           textareaRef.current.selectionEnd = newPos;
         }
@@ -1518,7 +1591,7 @@ export default function App() {
       const newHeaderOffset = trimmed.length + 2;
       const newHeaderLine = newText.slice(0, newHeaderOffset).split("\n").length;
 
-      handleTextChange(newText);
+      handleTextChange(newText, "command", newHeaderOffset, newHeaderOffset);
       requestAnimationFrame(() => {
         if (textareaRef.current) {
           textareaRef.current.selectionStart = newHeaderOffset;
@@ -1772,7 +1845,7 @@ export default function App() {
       if (/^\s/.test(line) && line.includes(from)) return line.replace(from, to);
       return line;
     }).join("\n");
-    handleTextChange(newText);
+    handleTextChange(newText, "command");
   }, [text, handleTextChange]);
 
   const lineHeight = settings.theme.lineHeight;
@@ -1923,11 +1996,7 @@ export default function App() {
                 e.preventDefault();
                 e.stopPropagation();
                 const isRedo = keyLower === "y" || (keyLower === "z" && e.shiftKey);
-                document.execCommand(isRedo ? "redo" : "undo");
-                if (textareaRef.current) {
-                  handleTextChange(textareaRef.current.value);
-                  requestAnimationFrame(() => updateCursorLine());
-                }
+                if (isRedo) performRedo(); else performUndo();
                 return;
               }
 
@@ -1968,7 +2037,7 @@ export default function App() {
                 const content = textRef.current;
                 const next = content.slice(0, accountSuggest.replaceStart) + chosen + content.slice(accountSuggest.replaceEnd);
                 const caret = accountSuggest.replaceStart + chosen.length;
-                handleTextChange(next);
+                handleTextChange(next, "command", caret, caret);
                 setAccountSuggest(null);
                 requestAnimationFrame(() => {
                   if (textareaRef.current) {
@@ -1986,7 +2055,7 @@ export default function App() {
                 const start = e.target.selectionStart;
                 const end = e.target.selectionEnd;
                 const nt = text.slice(0, start) + "    " + text.slice(end);
-                handleTextChange(nt);
+                handleTextChange(nt, "command", start + 4, start + 4);
                 requestAnimationFrame(() => {
                   e.target.selectionStart = e.target.selectionEnd = start + 4;
                 });
@@ -2087,6 +2156,12 @@ export default function App() {
                 setBaselineText("");
                 if (!filePathRef.current && backupOffer.filePath) setFilePath(backupOffer.filePath);
                 setBackupOffer(null);
+                undoRef.current = {
+                  stack: [{ text: recoveredText, selStart: 0, selEnd: 0 }],
+                  index: 0,
+                  lastChangeTime: 0,
+                  lastChangeType: null,
+                };
               }}
               style={{ background: C.accent, color: "#fff", border: "none", borderRadius: 4, padding: "5px 10px", fontFamily: FONT, fontSize: 11, cursor: "pointer", fontWeight: 600 }}
             >
