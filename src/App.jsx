@@ -19,6 +19,7 @@ const C = {
   account: "var(--account)",
   amount: "var(--amount)",
   comment: "var(--comment)",
+  status: "var(--status)",
   error: "var(--error)",
   errorBg: "var(--errorBg)",
   warning: "var(--warning)",
@@ -50,6 +51,8 @@ const DEFAULT_SETTINGS = {
     "editor.gotoStart": "Ctrl+Home",
     "editor.gotoEnd": "Ctrl+End",
     "app.settings": "Ctrl+,",
+    "editor.toggleComment": "Ctrl+/",
+    "editor.toggleStatus": "Ctrl+Shift+Space",
   },
 };
 const COMMAND_LABELS = {
@@ -63,6 +66,8 @@ const COMMAND_LABELS = {
   "editor.gotoLine": "Go to line",
   "editor.gotoStart": "Go to start of file",
   "editor.gotoEnd": "Go to end of file",
+  "editor.toggleComment": "Toggle comment",
+  "editor.toggleStatus": "Toggle transaction status",
   "app.settings": "Open settings",
 };
 const COMMAND_ORDER = [
@@ -75,6 +80,8 @@ const COMMAND_ORDER = [
   "editor.gotoLine",
   "editor.gotoStart",
   "editor.gotoEnd",
+  "editor.toggleComment",
+  "editor.toggleStatus",
   "app.settings",
   "help.hotkeys",
 ];
@@ -1368,6 +1375,103 @@ export default function App() {
       textareaRef.current.scrollTop = textareaRef.current.scrollHeight;
       setCursorLine(textRef.current.split("\n").length - 1);
     }
+    else if (command === "editor.toggleComment" && textareaRef.current) {
+      const area = textareaRef.current;
+      const content = textRef.current;
+      const selStart = area.selectionStart;
+      const selEnd = area.selectionEnd;
+      const allLines = content.split("\n");
+
+      const startLineIdx = content.slice(0, selStart).split("\n").length - 1;
+      let endLineIdx = content.slice(0, selEnd).split("\n").length - 1;
+      if (selEnd > selStart && selEnd > 0 && content[selEnd - 1] === "\n") {
+        endLineIdx = Math.max(startLineIdx, endLineIdx - 1);
+      }
+
+      const targetLines = allLines.slice(startLineIdx, endLineIdx + 1);
+      const allCommented = targetLines.every((l) => l.trim() === "" || /^\s*;/.test(l));
+
+      let newLines;
+      if (allCommented) {
+        newLines = targetLines.map((l) => {
+          if (l.trim() === "") return l;
+          return l.replace(/^(\s*); ?/, "$1");
+        });
+      } else {
+        newLines = targetLines.map((l) => {
+          if (l.trim() === "") return l;
+          const ind = l.match(/^(\s*)/)[1];
+          return ind + "; " + l.slice(ind.length);
+        });
+      }
+
+      let startLineOffset = 0;
+      for (let i = 0; i < startLineIdx; i++) startLineOffset += allLines[i].length + 1;
+
+      const oldBlock = targetLines.join("\n");
+      const newBlock = newLines.join("\n");
+      const newText = content.slice(0, startLineOffset) + newBlock + content.slice(startLineOffset + oldBlock.length);
+
+      handleTextChange(newText);
+      requestAnimationFrame(() => {
+        if (textareaRef.current) {
+          if (selStart === selEnd) {
+            const lineDiff = newLines[0].length - targetLines[0].length;
+            const newPos = Math.max(startLineOffset, selStart + lineDiff);
+            textareaRef.current.selectionStart = newPos;
+            textareaRef.current.selectionEnd = newPos;
+          } else {
+            textareaRef.current.selectionStart = startLineOffset;
+            textareaRef.current.selectionEnd = startLineOffset + newBlock.length;
+          }
+        }
+      });
+    }
+    else if (command === "editor.toggleStatus" && textareaRef.current) {
+      const area = textareaRef.current;
+      const content = textRef.current;
+      const pos = area.selectionStart;
+      const allLines = content.split("\n");
+      const lineIdx = content.slice(0, pos).split("\n").length - 1;
+
+      let headerIdx = -1;
+      for (let i = lineIdx; i >= 0; i--) {
+        if (/^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}\b/.test(allLines[i])) {
+          headerIdx = i;
+          break;
+        }
+        if (i < lineIdx && (allLines[i].trim() === "" || allLines[i].trim().startsWith(";"))) break;
+      }
+      if (headerIdx === -1) return;
+
+      const headerLine = allLines[headerIdx];
+      let newHeader;
+      const sm = headerLine.match(/^(\d{4}[-/.]\d{1,2}[-/.]\d{1,2}\s+)([*!])(\s+.*)$/);
+      if (sm) {
+        if (sm[2] === "!") {
+          newHeader = sm[1] + "*" + sm[3];
+        } else {
+          newHeader = sm[1] + sm[3].trimStart();
+        }
+      } else {
+        const dm = headerLine.match(/^(\d{4}[-/.]\d{1,2}[-/.]\d{1,2}\s+)(.*)/);
+        if (!dm) return;
+        newHeader = dm[1] + "! " + dm[2];
+      }
+
+      const diff = newHeader.length - headerLine.length;
+      allLines[headerIdx] = newHeader;
+      const newText = allLines.join("\n");
+
+      handleTextChange(newText);
+      requestAnimationFrame(() => {
+        if (textareaRef.current) {
+          const newPos = Math.max(0, pos + diff);
+          textareaRef.current.selectionStart = newPos;
+          textareaRef.current.selectionEnd = newPos;
+        }
+      });
+    }
   }, [openSettings]);
 
   useEffect(() => {
@@ -1638,6 +1742,7 @@ export default function App() {
         .seg-ac { color: ${C.account}; }
         .seg-am { color: ${C.amount}; font-weight: 600; }
         .seg-cm { color: ${C.comment}; font-style: italic; }
+        .seg-st { color: ${C.status}; font-weight: 600; }
         .seg-gh { color: ${C.ghostText}; }
         .line-error { background: ${C.errorBg}; }
         .line-warning { background: ${C.warningBg}; }

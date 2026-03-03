@@ -33,6 +33,8 @@ const DEFAULT_SETTINGS = {
       "editor.gotoStart": "Ctrl+Home",
       "editor.gotoEnd": "Ctrl+End",
       "app.settings": "Ctrl+,",
+      "editor.toggleComment": "Ctrl+/",
+      "editor.toggleStatus": "Ctrl+Shift+Space",
     },
 };
 

@@ -15,6 +15,7 @@ export const darkTheme = {
     account: "#61afef",
     amount: "#98c379",
     comment: "#5c6370",
+    status: "#c678dd",
     error: "#e06c75",
     errorBg: "rgba(224,108,117,0.08)",
     warning: "#d19a66",

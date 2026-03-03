@@ -27,6 +27,7 @@ export function themeCssVars(theme) {
     "--account": colors.account,
     "--amount": colors.amount,
     "--comment": colors.comment,
+    "--status": colors.status,
     "--error": colors.error,
     "--errorBg": colors.errorBg,
     "--warning": colors.warning,

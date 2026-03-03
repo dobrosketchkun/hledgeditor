@@ -15,6 +15,7 @@ export const lightTheme = {
     account: "#1569d8",
     amount: "#2f7d32",
     comment: "#8792a8",
+    status: "#8839b0",
     error: "#c33442",
     errorBg: "rgba(195,52,66,0.11)",
     warning: "#b06b1f",

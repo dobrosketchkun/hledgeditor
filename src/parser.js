@@ -369,6 +369,18 @@ export function highlightLine(line, lineIdx, errorLines, warningLines) {
   }
 
   if (/^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}\b/.test(cleanLine)) {
+    const ms = cleanLine.match(/^(\d{4}[-/.]\d{1,2}[-/.]\d{1,2})(\s+)([*!])(\s+)(.*?)(\s+;.*)?$/);
+    if (ms) {
+      const segs = [
+        { text: ms[1], cls: "dt" },
+        { text: ms[2], cls: "" },
+        { text: ms[3], cls: "st" },
+        { text: ms[4], cls: "" },
+        { text: ms[5], cls: "ds" },
+      ];
+      if (ms[6]) segs.push({ text: ms[6], cls: "cm" });
+      return { segments: segs, hasError, hasWarning };
+    }
     const m = cleanLine.match(/^(\d{4}[-/.]\d{1,2}[-/.]\d{1,2})(\s+)(.*?)(\s+;.*)?$/);
     if (m) {
       const segs = [
@@ -400,25 +412,31 @@ export function highlightLine(line, lineIdx, errorLines, warningLines) {
     const stripped = cleanLine.replace(/(\s+;.*)$/, "");
     const commentPart = cleanLine.slice(stripped.length);
     const indent = stripped.match(/^(\s*)/)[1];
-    const rest = stripped.slice(indent.length);
+    let rest = stripped.slice(indent.length);
+
+    const stMatch = rest.match(/^([*!])(\s+)/);
+    const statusParts = stMatch
+      ? [{ text: stMatch[1], cls: "st" }, { text: stMatch[2], cls: "" }]
+      : null;
+    if (stMatch) rest = rest.slice(stMatch[0].length);
 
     const amtMatch = rest.match(/^(.+?)(  +)(.+?)(\s*)$/);
     if (amtMatch) {
-      const segs = [
-        { text: indent, cls: "" },
+      const segs = [{ text: indent, cls: "" }];
+      if (statusParts) segs.push(...statusParts);
+      segs.push(
         { text: amtMatch[1], cls: "ac" },
         { text: amtMatch[2], cls: "" },
         { text: amtMatch[3], cls: "am" },
-      ];
+      );
       if (amtMatch[4]) segs.push({ text: amtMatch[4], cls: "" });
       if (commentPart) segs.push({ text: commentPart, cls: "cm" });
       return { segments: segs, hasError, hasWarning };
     }
 
-    const segs = [
-      { text: indent, cls: "" },
-      { text: rest, cls: "ac" },
-    ];
+    const segs = [{ text: indent, cls: "" }];
+    if (statusParts) segs.push(...statusParts);
+    segs.push({ text: rest, cls: "ac" });
     if (commentPart) segs.push({ text: commentPart, cls: "cm" });
     return { segments: segs, hasError, hasWarning };
   }
