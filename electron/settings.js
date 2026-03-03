@@ -35,6 +35,7 @@ const DEFAULT_SETTINGS = {
       "app.settings": "Ctrl+,",
       "editor.toggleComment": "Ctrl+/",
       "editor.toggleStatus": "Ctrl+Shift+Space",
+      "editor.duplicateTransaction": "Ctrl+D",
     },
 };
 

@@ -53,6 +53,7 @@ const DEFAULT_SETTINGS = {
     "app.settings": "Ctrl+,",
     "editor.toggleComment": "Ctrl+/",
     "editor.toggleStatus": "Ctrl+Shift+Space",
+    "editor.duplicateTransaction": "Ctrl+D",
   },
 };
 const COMMAND_LABELS = {
@@ -68,6 +69,7 @@ const COMMAND_LABELS = {
   "editor.gotoEnd": "Go to end of file",
   "editor.toggleComment": "Toggle comment",
   "editor.toggleStatus": "Toggle transaction status",
+  "editor.duplicateTransaction": "Duplicate transaction",
   "app.settings": "Open settings",
 };
 const COMMAND_ORDER = [
@@ -82,6 +84,7 @@ const COMMAND_ORDER = [
   "editor.gotoEnd",
   "editor.toggleComment",
   "editor.toggleStatus",
+  "editor.duplicateTransaction",
   "app.settings",
   "help.hotkeys",
 ];
@@ -1469,6 +1472,59 @@ export default function App() {
           const newPos = Math.max(0, pos + diff);
           textareaRef.current.selectionStart = newPos;
           textareaRef.current.selectionEnd = newPos;
+        }
+      });
+    }
+    else if (command === "editor.duplicateTransaction" && textareaRef.current) {
+      const area = textareaRef.current;
+      const content = textRef.current;
+      const pos = area.selectionStart;
+      const allLines = content.split("\n");
+      const lineIdx = content.slice(0, pos).split("\n").length - 1;
+
+      let headerIdx = -1;
+      for (let i = lineIdx; i >= 0; i--) {
+        if (/^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}\b/.test(allLines[i])) {
+          headerIdx = i;
+          break;
+        }
+        if (i < lineIdx && (allLines[i].trim() === "" || allLines[i].trim().startsWith(";"))) break;
+      }
+      if (headerIdx === -1) return;
+
+      let endIdx = headerIdx;
+      for (let i = headerIdx + 1; i < allLines.length; i++) {
+        if (/^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}\b/.test(allLines[i])) break;
+        if (allLines[i].trim() === "" || (!(/^\s/.test(allLines[i])) && !allLines[i].trim().startsWith(";"))) break;
+        endIdx = i;
+      }
+
+      const txLines = allLines.slice(headerIdx, endIdx + 1);
+      const today = new Date();
+      const yyyy = today.getFullYear();
+      const mm = String(today.getMonth() + 1).padStart(2, "0");
+      const dd = String(today.getDate()).padStart(2, "0");
+      const todayStr = `${yyyy}-${mm}-${dd}`;
+
+      txLines[0] = txLines[0].replace(
+        /^(\d{4}[-/.]\d{1,2}[-/.]\d{1,2})(\s+)(?:[*!]\s+)?/,
+        todayStr + "$2"
+      );
+
+      const trimmed = content.replace(/\n+$/, "");
+      const appendBlock = txLines.join("\n") + "\n";
+      const newText = trimmed + "\n\n" + appendBlock;
+
+      const newHeaderOffset = trimmed.length + 2;
+      const newHeaderLine = newText.slice(0, newHeaderOffset).split("\n").length;
+
+      handleTextChange(newText);
+      requestAnimationFrame(() => {
+        if (textareaRef.current) {
+          textareaRef.current.selectionStart = newHeaderOffset;
+          textareaRef.current.selectionEnd = newHeaderOffset;
+          textareaRef.current.scrollTop = textareaRef.current.scrollHeight;
+          setCursorLine(newHeaderLine);
         }
       });
     }
