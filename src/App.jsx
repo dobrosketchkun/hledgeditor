@@ -1522,11 +1522,14 @@ export default function App() {
   const dirtyLines = useMemo(() => computeDirtyLines(text, baselineText), [text, baselineText]);
   const accountHighlightLines = useMemo(() => {
     if (highlightedAccounts.size === 0) return new Set();
+    const patterns = [...highlightedAccounts].map(
+      (acct) => new RegExp(`(?<=^\\s*(?:[*!]\\s+)?)${escapeRegexLiteral(acct)}(?=\\s|$)`)
+    );
     const set = new Set();
     for (let i = 0; i < lines.length; i++) {
       if (/^\s/.test(lines[i])) {
-        for (const acct of highlightedAccounts) {
-          if (lines[i].includes(acct)) { set.add(i); break; }
+        for (const pat of patterns) {
+          if (pat.test(lines[i])) { set.add(i); break; }
         }
       }
     }
