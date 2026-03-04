@@ -36,7 +36,10 @@ const DEFAULT_SETTINGS = {
       "editor.toggleComment": "Ctrl+/",
       "editor.toggleStatus": "Ctrl+Shift+Space",
       "editor.duplicateTransaction": "Ctrl+D",
+      "app.templatePicker": "Ctrl+T",
+      "app.templateManager": "Ctrl+Shift+T",
     },
+  templates: [],
 };
 
 function getSettingsPath() {
@@ -94,6 +97,12 @@ function sanitizeSettings(raw) {
   merged.safety.keepBackups = clampNumber(merged.safety.keepBackups, 1, 200, DEFAULT_SETTINGS.safety.keepBackups);
 
   if (!isObject(merged.shortcuts)) merged.shortcuts = { ...DEFAULT_SETTINGS.shortcuts };
+
+  if (!Array.isArray(merged.templates)) merged.templates = [];
+  merged.templates = merged.templates.filter(
+    (t) => t && typeof t.id === "string" && typeof t.name === "string" &&
+           typeof t.shortcode === "string" && typeof t.body === "string"
+  );
 
   return merged;
 }

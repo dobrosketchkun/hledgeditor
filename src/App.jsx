@@ -54,7 +54,10 @@ const DEFAULT_SETTINGS = {
     "editor.toggleComment": "Ctrl+/",
     "editor.toggleStatus": "Ctrl+Shift+Space",
     "editor.duplicateTransaction": "Ctrl+D",
+    "app.templatePicker": "Ctrl+T",
+    "app.templateManager": "Ctrl+Shift+T",
   },
+  templates: [],
 };
 const COMMAND_LABELS = {
   "file.open": "Open file",
@@ -70,6 +73,8 @@ const COMMAND_LABELS = {
   "editor.toggleComment": "Toggle comment",
   "editor.toggleStatus": "Toggle transaction status",
   "editor.duplicateTransaction": "Duplicate transaction",
+  "app.templatePicker": "Insert template",
+  "app.templateManager": "Manage templates",
   "app.settings": "Open settings",
 };
 const COMMAND_ORDER = [
@@ -85,6 +90,8 @@ const COMMAND_ORDER = [
   "editor.toggleComment",
   "editor.toggleStatus",
   "editor.duplicateTransaction",
+  "app.templatePicker",
+  "app.templateManager",
   "app.settings",
   "help.hotkeys",
 ];
@@ -97,6 +104,7 @@ function mergeSettings(base, patch) {
     editor: { ...base.editor, ...(patch?.editor || {}) },
     safety: { ...base.safety, ...(patch?.safety || {}) },
     shortcuts: { ...base.shortcuts, ...(patch?.shortcuts || {}) },
+    templates: patch?.templates ?? base.templates ?? [],
   };
 }
 
@@ -427,7 +435,7 @@ function AppDialogModal({ request, onRespond }) {
   );
 }
 
-function SettingsModal({ settingsDraft, onChange, onSave, onClose, onStartRecording, recordingCommand, recordingConflict }) {
+function SettingsModal({ settingsDraft, onChange, onSave, onClose, onStartRecording, recordingCommand, recordingConflict, onOpenTemplateManager }) {
   if (!settingsDraft) return null;
   const shortcutEntries = COMMAND_ORDER
     .map((cmd) => [cmd, settingsDraft.shortcuts?.[cmd] || ""])
@@ -540,6 +548,14 @@ function SettingsModal({ settingsDraft, onChange, onSave, onClose, onStartRecord
             </label>
           </div>
 
+          <div style={{ fontSize: 11, color: C.gutterActive, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Templates</div>
+          <div style={{ marginBottom: 10 }}>
+            <button
+              onClick={onOpenTemplateManager}
+              style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.accent, borderRadius: 4, padding: "4px 10px", fontFamily: FONT, fontSize: 11, cursor: "pointer" }}
+            >Manage transaction templates</button>
+          </div>
+
           <div style={{ fontSize: 11, color: C.gutterActive, marginBottom: 6, textTransform: "uppercase", letterSpacing: "0.06em" }}>Shortcuts</div>
           <div style={{ marginBottom: 6, fontSize: 11, color: C.gutterText }}>
             Click Record and press your key combination.
@@ -578,6 +594,165 @@ function SettingsModal({ settingsDraft, onChange, onSave, onClose, onStartRecord
         <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 12, gap: 8 }}>
           <button onClick={onClose} style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.gutterActive, borderRadius: 4, padding: "5px 10px", fontFamily: FONT, cursor: "pointer", fontSize: 11 }}>Cancel</button>
           <button onClick={onSave} style={{ background: C.accent, color: "#fff", border: "none", borderRadius: 4, padding: "5px 10px", fontFamily: FONT, cursor: "pointer", fontSize: 11, fontWeight: 600 }}>Save settings</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TemplateManagerModal({ templates, onSave, onClose }) {
+  const [draft, setDraft] = useState(() => (templates || []).map((t) => ({ ...t })));
+
+  const addTemplate = () => {
+    setDraft((prev) => [...prev, { id: Date.now().toString(36), name: "", shortcode: "", body: "" }]);
+  };
+  const updateField = (idx, field, value) => {
+    setDraft((prev) => prev.map((t, i) => (i === idx ? { ...t, [field]: value } : t)));
+  };
+  const removeTemplate = (idx) => {
+    setDraft((prev) => prev.filter((_, i) => i !== idx));
+  };
+
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, background: C.overlay, display: "flex", alignItems: "center", justifyContent: "center", zIndex: 52 }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: 720, maxWidth: "94vw", maxHeight: "90vh", overflow: "auto", background: C.panelBg, border: `1px solid ${C.border}`, borderRadius: 8, boxShadow: "0 14px 40px rgba(0,0,0,0.45)", fontFamily: FONT, color: C.text, padding: 14 }}
+      >
+        <div style={{ display: "flex", alignItems: "center", marginBottom: 10 }}>
+          <span style={{ color: C.accent, fontWeight: 700 }}>Transaction Templates</span>
+          <div style={{ flex: 1 }} />
+          <button onClick={addTemplate} style={{ background: C.accent, color: "#fff", border: "none", borderRadius: 4, padding: "4px 10px", fontFamily: FONT, fontSize: 11, cursor: "pointer", fontWeight: 600, marginRight: 8 }}>+ Add template</button>
+          <button onClick={onClose} style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.gutterActive, borderRadius: 4, padding: "4px 8px", fontFamily: FONT, fontSize: 11, cursor: "pointer" }}>Close</button>
+        </div>
+
+        <div style={{ maxHeight: "60vh", overflowY: "auto" }}>
+          {draft.length === 0 && (
+            <div style={{ padding: "20px 0", textAlign: "center", color: C.gutterText, fontSize: 12, fontStyle: "italic" }}>No templates yet. Click &quot;+ Add template&quot; to create one.</div>
+          )}
+          {draft.map((tmpl, idx) => (
+            <div key={tmpl.id} style={{ border: `1px solid ${C.border}`, borderRadius: 6, padding: 10, marginBottom: 8 }}>
+              <div style={{ display: "flex", gap: 8, marginBottom: 6, alignItems: "center" }}>
+                <input
+                  value={tmpl.name}
+                  onChange={(e) => updateField(idx, "name", e.target.value)}
+                  placeholder="Template name"
+                  style={{ flex: 1, background: C.bg, color: C.text, border: `1px solid ${C.border}`, borderRadius: 4, padding: "4px 8px", fontFamily: FONT, fontSize: 12 }}
+                />
+                <span style={{ color: C.gutterText, fontSize: 12 }}>&gt;</span>
+                <input
+                  value={tmpl.shortcode}
+                  onChange={(e) => updateField(idx, "shortcode", e.target.value.replace(/\s/g, ""))}
+                  placeholder="shortcode"
+                  style={{ width: 120, background: C.bg, color: C.text, border: `1px solid ${C.border}`, borderRadius: 4, padding: "4px 8px", fontFamily: FONT, fontSize: 12 }}
+                />
+                <button
+                  onClick={() => removeTemplate(idx)}
+                  style={{ background: "transparent", color: C.error, border: `1px solid ${C.error}33`, borderRadius: 4, padding: "4px 8px", fontFamily: FONT, fontSize: 11, cursor: "pointer" }}
+                >Delete</button>
+              </div>
+              <textarea
+                value={tmpl.body}
+                onChange={(e) => updateField(idx, "body", e.target.value)}
+                placeholder={"2025-01-01 Description\n    account:one  $100\n    account:two"}
+                rows={4}
+                style={{ width: "100%", background: C.bg, color: C.text, border: `1px solid ${C.border}`, borderRadius: 4, padding: "6px 8px", fontFamily: FONT, fontSize: 12, resize: "vertical", lineHeight: "1.5", tabSize: 4 }}
+              />
+            </div>
+          ))}
+        </div>
+
+        <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10, gap: 8 }}>
+          <button onClick={onClose} style={{ background: "transparent", border: `1px solid ${C.border}`, color: C.gutterActive, borderRadius: 4, padding: "5px 10px", fontFamily: FONT, cursor: "pointer", fontSize: 11 }}>Cancel</button>
+          <button onClick={() => onSave(draft)} style={{ background: C.accent, color: "#fff", border: "none", borderRadius: 4, padding: "5px 10px", fontFamily: FONT, cursor: "pointer", fontSize: 11, fontWeight: 600 }}>Save templates</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function TemplatePickerModal({ templates, onInsert, onClose }) {
+  const [query, setQuery] = useState("");
+  const [selIdx, setSelIdx] = useState(0);
+  const inputRef = useRef(null);
+
+  useEffect(() => { inputRef.current?.focus(); }, []);
+
+  const filtered = useMemo(() => {
+    if (!query) return templates || [];
+    const q = query.toLowerCase();
+    return (templates || []).filter(
+      (t) => t.name.toLowerCase().includes(q) || t.shortcode.toLowerCase().includes(q)
+    );
+  }, [templates, query]);
+
+  useEffect(() => { setSelIdx(0); }, [filtered]);
+
+  const handleKeyDown = (e) => {
+    if (e.key === "Escape") { onClose(); return; }
+    if (e.key === "ArrowDown") { e.preventDefault(); setSelIdx((i) => Math.min(i + 1, filtered.length - 1)); return; }
+    if (e.key === "ArrowUp") { e.preventDefault(); setSelIdx((i) => Math.max(i - 1, 0)); return; }
+    if (e.key === "Enter" && filtered.length > 0) {
+      e.preventDefault();
+      onInsert(filtered[selIdx], e.shiftKey);
+      onClose();
+    }
+  };
+
+  return (
+    <div
+      onClick={onClose}
+      style={{ position: "fixed", inset: 0, background: C.overlay, display: "flex", alignItems: "flex-start", justifyContent: "center", paddingTop: "15vh", zIndex: 52 }}
+    >
+      <div
+        onClick={(e) => e.stopPropagation()}
+        style={{ width: 480, maxWidth: "90vw", background: C.panelBg, border: `1px solid ${C.border}`, borderRadius: 8, boxShadow: "0 14px 40px rgba(0,0,0,0.45)", fontFamily: FONT, color: C.text }}
+      >
+        <div style={{ padding: "10px 12px", borderBottom: `1px solid ${C.border}` }}>
+          <input
+            ref={inputRef}
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            onKeyDown={handleKeyDown}
+            placeholder="Search templates..."
+            style={{ width: "100%", background: C.bg, color: C.text, border: `1px solid ${C.border}`, borderRadius: 4, padding: "6px 10px", fontFamily: FONT, fontSize: 12, outline: "none" }}
+          />
+        </div>
+        <div style={{ maxHeight: 260, overflowY: "auto" }}>
+          {filtered.length === 0 && (
+            <div style={{ padding: "16px 12px", color: C.gutterText, fontSize: 12, fontStyle: "italic", textAlign: "center" }}>
+              {(templates || []).length === 0 ? "No templates defined. Use Manage templates to create some." : "No matching templates."}
+            </div>
+          )}
+          {filtered.map((tmpl, idx) => (
+            <div
+              key={tmpl.id}
+              onClick={() => { onInsert(tmpl, false); onClose(); }}
+              style={{
+                padding: "8px 12px",
+                cursor: "pointer",
+                background: idx === selIdx ? C.accentSoft : "transparent",
+                borderBottom: `1px solid ${C.border}`,
+                display: "flex",
+                alignItems: "center",
+                gap: 10,
+                transition: "background 0.1s",
+              }}
+              onMouseEnter={(e) => { setSelIdx(idx); e.currentTarget.style.background = C.accentSoft; }}
+              onMouseLeave={(e) => { if (idx !== selIdx) e.currentTarget.style.background = "transparent"; }}
+            >
+              <span style={{ flex: 1, fontSize: 12 }}>{tmpl.name || "(unnamed)"}</span>
+              <span style={{ color: C.gutterText, fontSize: 11 }}>&gt;{tmpl.shortcode}</span>
+            </div>
+          ))}
+        </div>
+        <div style={{ padding: "6px 12px", borderTop: `1px solid ${C.border}`, fontSize: 10, color: C.gutterText, display: "flex", gap: 16 }}>
+          <span>Enter — insert at end</span>
+          <span>Shift+Enter — insert at cursor</span>
+          <span>Esc — close</span>
         </div>
       </div>
     </div>
@@ -1012,6 +1187,39 @@ function sameAccountSuggestion(a, b) {
   return true;
 }
 
+function buildTemplateSuggestionModel(fullText, cursorPos, templates, prevSuggest) {
+  if (!templates || templates.length === 0) return null;
+  const text = String(fullText || "");
+  const pos = Math.max(0, Math.min(cursorPos || 0, text.length));
+  const lineStart = text.lastIndexOf("\n", Math.max(0, pos - 1)) + 1;
+  const lineEndRaw = text.indexOf("\n", pos);
+  const lineEnd = lineEndRaw === -1 ? text.length : lineEndRaw;
+  const line = text.slice(lineStart, lineEnd);
+
+  if (!line.startsWith(">")) return null;
+  const localPos = pos - lineStart;
+  const typed = line.slice(1, localPos);
+  if (/\s/.test(typed)) return null;
+
+  const typedLower = typed.toLowerCase();
+  let matches = templates.filter(
+    (t) => t.shortcode && t.shortcode.toLowerCase().startsWith(typedLower)
+  );
+  if (matches.length === 0) return null;
+  matches = matches.slice(0, 8);
+
+  const sameAnchor = prevSuggest && prevSuggest.replaceStart === lineStart && prevSuggest.typed === typed;
+
+  return {
+    lineIdx: text.slice(0, lineStart).split("\n").length - 1,
+    replaceStart: lineStart,
+    replaceEnd: lineEnd,
+    typed,
+    matches,
+    selectedIndex: sameAnchor ? Math.min(prevSuggest.selectedIndex || 0, matches.length - 1) : 0,
+  };
+}
+
 function renderLineWithFindHighlight(segments, lineStart, activeFindRange) {
   if (!activeFindRange || activeFindRange.start >= activeFindRange.end) {
     return segments.map((seg, idx) => ({
@@ -1090,6 +1298,9 @@ export default function App() {
   const [recordingCommand, setRecordingCommand] = useState(null);
   const [recordingConflict, setRecordingConflict] = useState("");
   const [isMaximized, setIsMaximized] = useState(false);
+  const [showTemplatePicker, setShowTemplatePicker] = useState(false);
+  const [showTemplateManager, setShowTemplateManager] = useState(false);
+  const [templateSuggest, setTemplateSuggest] = useState(null);
   const textareaRef = useRef(null);
   const highlightRef = useRef(null);
   const gutterRef = useRef(null);
@@ -1601,6 +1812,8 @@ export default function App() {
         }
       });
     }
+    else if (command === "app.templatePicker") setShowTemplatePicker(true);
+    else if (command === "app.templateManager") setShowTemplateManager(true);
   }, [openSettings]);
 
   useEffect(() => {
@@ -1650,6 +1863,15 @@ export default function App() {
         return;
       }
       if (settingsDraft) return;
+      if (e.key === "Escape" && showTemplateManager) {
+        setShowTemplateManager(false);
+        return;
+      }
+      if (e.key === "Escape" && showTemplatePicker) {
+        setShowTemplatePicker(false);
+        return;
+      }
+      if (showTemplateManager || showTemplatePicker) return;
       if (e.key === "Escape" && (showFind || showGotoLine)) {
         setShowFind(false);
         setShowReplace(false);
@@ -1674,7 +1896,7 @@ export default function App() {
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [showHotkeys, settingsDraft, recordingCommand, showFind, showGotoLine, appDialogRequest, respondAppDialog, settings, runCommand]);
+  }, [showHotkeys, settingsDraft, recordingCommand, showFind, showGotoLine, appDialogRequest, respondAppDialog, settings, runCommand, showTemplatePicker, showTemplateManager]);
 
   useEffect(() => {
     if (!window.electronAPI) return undefined;
@@ -1809,7 +2031,11 @@ export default function App() {
       const next = buildAccountSuggestionModel(text, pos, accountNames, prev);
       return sameAccountSuggestion(prev, next) ? prev : next;
     });
-  }, [text, accountNames]);
+    setTemplateSuggest((prev) => {
+      const next = buildTemplateSuggestionModel(text, pos, settings.templates, prev);
+      return next === prev ? prev : next;
+    });
+  }, [text, accountNames, settings.templates]);
 
   useEffect(() => { updateCursorLine(); }, [text, updateCursorLine]);
   useEffect(() => {
@@ -1847,6 +2073,42 @@ export default function App() {
     }).join("\n");
     handleTextChange(newText, "command");
   }, [text, handleTextChange]);
+
+  const insertTemplate = useCallback((tmpl, atCursor) => {
+    if (!tmpl?.body) return;
+    const today = new Date();
+    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+    const body = tmpl.body.replace(/^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}/, todayStr);
+
+    const content = textRef.current;
+    let newText, cursorPos;
+    if (atCursor && textareaRef.current) {
+      const pos = textareaRef.current.selectionStart;
+      newText = content.slice(0, pos) + body + "\n" + content.slice(pos);
+      cursorPos = pos + body.length + 1;
+    } else {
+      const trimmed = content.replace(/\n+$/, "");
+      newText = trimmed + "\n\n" + body + "\n";
+      cursorPos = trimmed.length + 2 + body.length + 1;
+    }
+
+    handleTextChange(newText, "command", cursorPos, cursorPos);
+    requestAnimationFrame(() => {
+      if (textareaRef.current) {
+        textareaRef.current.selectionStart = cursorPos;
+        textareaRef.current.selectionEnd = cursorPos;
+        if (!atCursor) textareaRef.current.scrollTop = textareaRef.current.scrollHeight;
+        setCursorLine(newText.slice(0, cursorPos).split("\n").length - 1);
+      }
+    });
+  }, [handleTextChange]);
+
+  const saveTemplates = useCallback(async (newTemplates) => {
+    const next = mergeSettings(settings, { templates: newTemplates });
+    setSettings(next);
+    setShowTemplateManager(false);
+    await window.electronAPI?.updateSettings?.(next);
+  }, [settings]);
 
   const lineHeight = settings.theme.lineHeight;
   const fontSize = settings.theme.fontSize;
@@ -1973,6 +2235,20 @@ export default function App() {
                     </span>
                     );
                   })()}
+                {templateSuggest?.lineIdx === i &&
+                  templateSuggest?.matches?.length > 0 &&
+                  (() => {
+                    const chosen = templateSuggest.matches[templateSuggest.selectedIndex || 0];
+                    if (!chosen) return null;
+                    const typed = templateSuggest.typed || "";
+                    const suffix = chosen.shortcode.slice(typed.length);
+                    if (!suffix) return null;
+                    return (
+                    <span className="seg-gh">
+                      {suffix}
+                    </span>
+                    );
+                  })()}
               </div>
               );
             })}
@@ -2050,6 +2326,51 @@ export default function App() {
                 });
                 return;
               }
+              if (templateSuggest?.matches?.length) {
+                if (e.key === "ArrowDown") {
+                  e.preventDefault();
+                  setTemplateSuggest((prev) => {
+                    if (!prev?.matches?.length) return prev;
+                    return { ...prev, selectedIndex: ((prev.selectedIndex || 0) + 1) % prev.matches.length };
+                  });
+                  return;
+                }
+                if (e.key === "ArrowUp") {
+                  e.preventDefault();
+                  setTemplateSuggest((prev) => {
+                    if (!prev?.matches?.length) return prev;
+                    return { ...prev, selectedIndex: ((prev.selectedIndex || 0) - 1 + prev.matches.length) % prev.matches.length };
+                  });
+                  return;
+                }
+                if (e.key === "Escape") {
+                  e.preventDefault();
+                  setTemplateSuggest(null);
+                  return;
+                }
+                if (e.key === "Tab" || e.key === "Enter") {
+                  e.preventDefault();
+                  const chosen = templateSuggest.matches[templateSuggest.selectedIndex || 0];
+                  if (chosen?.body) {
+                    const today = new Date();
+                    const todayStr = `${today.getFullYear()}-${String(today.getMonth() + 1).padStart(2, "0")}-${String(today.getDate()).padStart(2, "0")}`;
+                    const body = chosen.body.replace(/^\d{4}[-/.]\d{1,2}[-/.]\d{1,2}/, todayStr);
+                    const content = textRef.current;
+                    const newText = content.slice(0, templateSuggest.replaceStart) + body + content.slice(templateSuggest.replaceEnd);
+                    const caret = templateSuggest.replaceStart + body.length;
+                    handleTextChange(newText, "command", caret, caret);
+                    setTemplateSuggest(null);
+                    requestAnimationFrame(() => {
+                      if (textareaRef.current) {
+                        textareaRef.current.selectionStart = caret;
+                        textareaRef.current.selectionEnd = caret;
+                        setCursorLine(newText.slice(0, caret).split("\n").length - 1);
+                      }
+                    });
+                  }
+                  return;
+                }
+              }
               if (e.key === "Tab") {
                 e.preventDefault();
                 const start = e.target.selectionStart;
@@ -2099,6 +2420,26 @@ export default function App() {
           }}
           recordingCommand={recordingCommand}
           recordingConflict={recordingConflict}
+          onOpenTemplateManager={() => {
+            setSettingsDraft(null);
+            setRecordingCommand(null);
+            setRecordingConflict("");
+            setShowTemplateManager(true);
+          }}
+        />
+      )}
+      {showTemplatePicker && (
+        <TemplatePickerModal
+          templates={settings.templates || []}
+          onInsert={(tmpl, atCursor) => insertTemplate(tmpl, atCursor)}
+          onClose={() => setShowTemplatePicker(false)}
+        />
+      )}
+      {showTemplateManager && (
+        <TemplateManagerModal
+          templates={settings.templates || []}
+          onSave={saveTemplates}
+          onClose={() => setShowTemplateManager(false)}
         />
       )}
       {showFind && (
