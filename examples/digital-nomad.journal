@@ -1,0 +1,170 @@
+; Digital Nomad — March 2026 in Thailand
+; Remote worker paid in USD, spending in Thai Baht (THB),
+; with some EUR expenses from a previous month in Portugal.
+; Tracks exchange rates and travel-heavy categories.
+
+; ── Chart of accounts ──
+
+account assets:bank:us checking        ; type: A
+account assets:bank:wise               ; type: A
+account assets:cash:thb                ; type: A
+account assets:cash:usd                ; type: A
+account liabilities:credit card        ; type: L
+account income:salary                  ; type: R
+account income:side projects           ; type: R
+account expenses:housing:rent          ; type: X
+account expenses:housing:utilities     ; type: X
+account expenses:food:groceries        ; type: X
+account expenses:food:dining           ; type: X
+account expenses:food:street food      ; type: X
+account expenses:food:coffee           ; type: X
+account expenses:transport:scooter     ; type: X
+account expenses:transport:flights     ; type: X
+account expenses:transport:local       ; type: X
+account expenses:coworking             ; type: X
+account expenses:health:insurance      ; type: X
+account expenses:health:medical        ; type: X
+account expenses:phone:sim             ; type: X
+account expenses:visa                  ; type: X
+account expenses:entertainment         ; type: X
+account expenses:laundry               ; type: X
+account expenses:fees:transfer         ; type: X
+account expenses:fees:atm              ; type: X
+
+commodity $1,000.00
+commodity 1,000.00 THB
+commodity 1.000,00 EUR
+
+P 2026-03-01 THB $0.028
+P 2026-03-01 EUR $1.10
+
+; ── Income ──
+
+2026-03-01 * Salary — remote job
+    assets:bank:us checking          $5,200.00
+    income:salary
+
+2026-03-05 Side project payment
+    assets:bank:wise                   $800.00
+    income:side projects
+
+; ── Currency exchange ──
+
+2026-03-02 Wise transfer — USD to THB for monthly spending
+    assets:bank:wise                 60,000 THB
+    expenses:fees:transfer              $12.00
+    assets:bank:us checking         -$1,692.00
+
+2026-03-02 ATM withdrawal — Bangkok Bank
+    assets:cash:thb                  10,000 THB
+    expenses:fees:atm                   220 THB
+    assets:bank:wise
+
+; ── Housing ──
+
+2026-03-01 Condo rent — Chiang Mai  ; monthly, paid in cash
+    expenses:housing:rent            15,000 THB
+    assets:cash:thb
+
+2026-03-05 Electric + water
+    expenses:housing:utilities        1,800 THB
+    assets:cash:thb
+
+; ── Daily life ──
+
+2026-03-03 Rimping supermarket
+    expenses:food:groceries           1,240 THB
+    assets:cash:thb
+
+2026-03-04 Khao soi at local spot
+    expenses:food:street food            60 THB
+    assets:cash:thb
+
+2026-03-05 Coffee at Ristr8to
+    expenses:food:coffee                120 THB
+    assets:cash:thb
+
+2026-03-06 Scooter rental — monthly
+    expenses:transport:scooter        3,500 THB
+    assets:cash:thb
+
+2026-03-07 Punspace coworking — day pass
+    expenses:coworking                  300 THB
+    assets:cash:thb
+
+2026-03-08 Night market dinner
+    expenses:food:street food           150 THB
+    assets:cash:thb
+
+2026-03-09 Laundry service
+    expenses:laundry                    180 THB
+    assets:cash:thb
+
+2026-03-10 Groceries — Tops
+    expenses:food:groceries             980 THB
+    assets:cash:thb
+
+2026-03-11 Punspace coworking — 10-day pass
+    expenses:coworking                2,500 THB
+    assets:bank:wise
+
+2026-03-12 Thai SIM top-up
+    expenses:phone:sim                  300 THB
+    assets:cash:thb
+
+2026-03-13 Pad thai + beer with friends
+    expenses:food:dining                320 THB
+    assets:cash:thb
+
+2026-03-14 Dentist — cleaning  ; way cheaper than US
+    expenses:health:medical             800 THB
+    assets:cash:thb
+
+2026-03-15 ATM withdrawal
+    assets:cash:thb                  10,000 THB
+    expenses:fees:atm                   220 THB
+    assets:bank:wise
+
+2026-03-16 Groceries
+    expenses:food:groceries           1,100 THB
+    assets:cash:thb
+
+2026-03-18 Coffee beans — local roaster
+    expenses:food:coffee                350 THB
+    assets:cash:thb
+
+2026-03-20 Visa extension — Chiang Mai immigration
+    expenses:visa                     1,900 THB
+    assets:cash:thb
+
+2026-03-22 Weekend trip to Pai — bus
+    expenses:transport:local            350 THB
+    assets:cash:thb
+
+2026-03-22 Weekend trip to Pai — guesthouse 2 nights
+    expenses:housing:rent             1,200 THB
+    assets:cash:thb
+
+2026-03-24 Groceries
+    expenses:food:groceries           1,050 THB
+    assets:cash:thb
+
+2026-03-25 Health insurance — monthly (SafetyWing)
+    expenses:health:insurance           $83.00
+    assets:bank:us checking
+
+2026-03-27 Dinner at fancy restaurant
+    expenses:food:dining                850 THB
+    assets:cash:thb
+
+2026-03-28 Flight booked — Chiang Mai to Bali next month
+    expenses:transport:flights          $280.00
+    liabilities:credit card
+
+2026-03-30 Groceries
+    expenses:food:groceries             890 THB
+    assets:cash:thb
+
+2026-03-31 Credit card payment
+    liabilities:credit card            $280.00
+    assets:bank:us checking

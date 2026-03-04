@@ -1,0 +1,122 @@
+; Investment Portfolio — Q1 2026
+; Tracks stock purchases with cost basis, dividend income,
+; market prices, crypto holdings, and capital gains.
+
+; ── Chart of accounts ──
+
+account assets:bank:checking           ; type: A
+account assets:brokerage:fidelity      ; type: A
+account assets:brokerage:coinbase      ; type: A
+account income:dividends               ; type: R
+account income:interest                ; type: R
+account income:capital gains           ; type: R
+account expenses:fees:trading          ; type: X
+account expenses:fees:management       ; type: X
+account expenses:taxes:capital gains   ; type: X
+
+commodity $1,000.00
+commodity 1.00000000 BTC
+commodity 1.0000 ETH
+
+; ── Market prices ──
+
+P 2026-01-02 AAPL $192.50
+P 2026-01-02 VTI $245.00
+P 2026-01-02 GOOG $178.30
+P 2026-01-02 BTC $42,500.00
+P 2026-01-02 ETH $2,280.00
+
+P 2026-02-01 AAPL $198.10
+P 2026-02-01 VTI $251.00
+P 2026-02-01 GOOG $182.00
+P 2026-02-01 BTC $48,200.00
+P 2026-02-01 ETH $2,650.00
+
+P 2026-03-01 AAPL $205.80
+P 2026-03-01 VTI $258.00
+P 2026-03-01 GOOG $190.50
+P 2026-03-01 BTC $62,000.00
+P 2026-03-01 ETH $3,100.00
+
+; ── January ──
+
+2026-01-03 Buy VTI — monthly DCA
+    assets:brokerage:fidelity            20 VTI @ $245.00
+    expenses:fees:trading                 $4.95
+    assets:bank:checking             -$4,904.95
+
+2026-01-03 Buy AAPL
+    assets:brokerage:fidelity            10 AAPL @ $192.50
+    expenses:fees:trading                 $4.95
+    assets:bank:checking             -$1,929.95
+
+2026-01-10 Buy BTC
+    assets:brokerage:coinbase      0.10000000 BTC @ $42,500.00
+    expenses:fees:trading                $14.99
+    assets:bank:checking             -$4,264.99
+
+2026-01-15 VTI dividend  ; quarterly
+    assets:brokerage:fidelity           $148.00
+    income:dividends
+
+2026-01-20 Buy ETH
+    assets:brokerage:coinbase        1.0000 ETH @ $2,280.00
+    expenses:fees:trading                 $9.99
+    assets:bank:checking             -$2,289.99
+
+; ── February ──
+
+2026-02-02 Buy VTI — monthly DCA
+    assets:brokerage:fidelity            20 VTI @ $251.00
+    expenses:fees:trading                 $4.95
+    assets:bank:checking             -$5,024.95
+
+2026-02-10 Buy GOOG
+    assets:brokerage:fidelity            15 GOOG @ $182.00
+    expenses:fees:trading                 $4.95
+    assets:bank:checking             -$2,734.95
+
+2026-02-14 AAPL dividend
+    assets:brokerage:fidelity            $25.00
+    income:dividends
+
+2026-02-20 Sell some BTC for profit
+    assets:bank:checking              $5,200.00
+    expenses:fees:trading                $18.50
+    assets:brokerage:coinbase     -0.10000000 BTC @ $52,185.00
+    income:capital gains
+
+; ── March ──
+
+2026-03-03 Buy VTI — monthly DCA
+    assets:brokerage:fidelity            20 VTI @ $258.00
+    expenses:fees:trading                 $4.95
+    assets:bank:checking             -$5,164.95
+
+2026-03-08 Buy more AAPL
+    assets:brokerage:fidelity             5 AAPL @ $205.80
+    expenses:fees:trading                 $4.95
+    assets:bank:checking             -$1,033.95
+
+2026-03-12 Buy more ETH
+    assets:brokerage:coinbase        0.5000 ETH @ $3,100.00
+    expenses:fees:trading                 $9.99
+    assets:bank:checking             -$1,559.99
+
+2026-03-15 Quarterly management fee — Fidelity
+    expenses:fees:management             $42.00
+    assets:brokerage:fidelity
+
+2026-03-18 Savings interest
+    assets:bank:checking                 $28.50
+    income:interest
+
+2026-03-25 VTI dividend
+    assets:brokerage:fidelity           $186.00
+    income:dividends
+
+2026-03-28 Sell GOOG — partial position
+    assets:bank:checking              $1,905.00
+    expenses:fees:trading                 $4.95
+    assets:brokerage:fidelity           -10 GOOG @ $190.50
+    income:capital gains                -$4.95

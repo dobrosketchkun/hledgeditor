@@ -1,0 +1,210 @@
+; College Student — Spring 2026 semester
+; Tracks student loans, part-time job, tight budget,
+; splitting rent with roommates, and lots of small cash transactions.
+
+; ── Accounts ──
+
+account assets:bank:checking
+account assets:cash
+account assets:venmo
+account assets:receivable:jake         ; roommate owes me
+account assets:receivable:maria        ; roommate owes me
+account liabilities:student loan
+account liabilities:credit card
+account income:part-time
+account income:tutoring
+account income:parents
+account expenses:tuition
+account expenses:textbooks
+account expenses:housing:rent
+account expenses:housing:utilities
+account expenses:food:groceries
+account expenses:food:dining
+account expenses:food:coffee
+account expenses:transport:bus pass
+account expenses:phone
+account expenses:entertainment
+account expenses:laundry
+account expenses:personal
+
+commodity $1,000.00
+
+; ── Semester start ──
+
+2026-01-08 * Student loan disbursement — spring 2026
+    assets:bank:checking             $6,200.00
+    liabilities:student loan
+
+2026-01-08 * Spring tuition payment
+    expenses:tuition                 $5,400.00
+    assets:bank:checking
+
+2026-01-10 Textbooks — used from campus bookstore
+    expenses:textbooks                 $185.00
+    assets:bank:checking
+
+2026-01-10 Bus pass — semester
+    expenses:transport:bus pass        $180.00
+    assets:bank:checking
+
+; ── January ──
+
+2026-01-12 Mom sent money  ; monthly help
+    assets:venmo                       $200.00
+    income:parents
+
+2026-01-13 Rent — my share of 3-way split  ; $1350 / 3
+    expenses:housing:rent              $450.00
+    assets:bank:checking
+
+2026-01-13 Paid rent for Jake (he'll pay me back)
+    assets:receivable:jake             $450.00
+    assets:bank:checking
+
+2026-01-15 Jake paid me back
+    assets:venmo                       $450.00
+    assets:receivable:jake
+
+2026-01-15 * (PH-0115) Paycheck — campus library
+    assets:bank:checking               $420.00
+    income:part-time
+
+2026-01-17 Grocery run — Aldi
+    expenses:food:groceries             $34.00
+    assets:bank:checking
+
+2026-01-19 Pizza with friends
+    expenses:food:dining                $12.00
+    assets:cash
+
+2026-01-22 Laundromat
+    expenses:laundry                     $8.00
+    assets:cash
+
+2026-01-25 Phone bill
+    expenses:phone                      $35.00
+    assets:bank:checking
+
+2026-01-28 Tutoring session — calculus
+    assets:cash                         $30.00
+    income:tutoring
+
+2026-01-29 * (PH-0129) Paycheck
+    assets:bank:checking               $420.00
+    income:part-time
+
+2026-01-30 Venmo to bank transfer
+    assets:bank:checking               $650.00
+    assets:venmo
+
+; ── February ──
+
+2026-02-01 Rent — February
+    expenses:housing:rent              $450.00
+    assets:bank:checking
+
+2026-02-01 Utilities — my third
+    expenses:housing:utilities          $55.00
+    assets:bank:checking
+
+2026-02-03 Groceries
+    expenses:food:groceries             $41.00
+    assets:bank:checking
+
+2026-02-05 Coffee — late night study session
+    expenses:food:coffee                 $4.50
+    assets:cash
+
+2026-02-08 Mom sent money
+    assets:venmo                       $200.00
+    income:parents
+
+2026-02-10 Movie with friends
+    expenses:entertainment              $15.00
+    assets:bank:checking
+
+2026-02-12 * (PH-0212) Paycheck
+    assets:bank:checking               $420.00
+    income:part-time
+
+2026-02-14 Valentine's day dinner
+    expenses:food:dining                $28.00
+    liabilities:credit card
+
+2026-02-17 Groceries
+    expenses:food:groceries             $37.00
+    assets:bank:checking
+
+2026-02-20 Textbook — late add class
+    expenses:textbooks                  $62.00
+    assets:bank:checking
+
+2026-02-22 Laundromat
+    expenses:laundry                     $8.00
+    assets:cash
+
+2026-02-25 Tutoring — 2 sessions
+    assets:cash                         $60.00
+    income:tutoring
+
+2026-02-26 * (PH-0226) Paycheck
+    assets:bank:checking               $420.00
+    income:part-time
+
+2026-02-28 Credit card payment
+    liabilities:credit card             $28.00
+    assets:bank:checking
+
+; ── March ──
+
+2026-03-01 Rent — March
+    expenses:housing:rent              $450.00
+    assets:bank:checking
+
+2026-03-01 Utilities
+    expenses:housing:utilities          $48.00
+    assets:bank:checking
+
+2026-03-03 Groceries
+    expenses:food:groceries             $39.00
+    assets:bank:checking
+
+2026-03-05 Paid Maria's share of internet  ; she'll venmo me
+    assets:receivable:maria             $20.00
+    assets:cash
+
+2026-03-06 Maria paid me back
+    assets:venmo                        $20.00
+    assets:receivable:maria
+
+2026-03-08 Mom sent money
+    assets:venmo                       $200.00
+    income:parents
+
+2026-03-10 Haircut
+    expenses:personal                   $18.00
+    assets:cash
+
+2026-03-12 * (PH-0312) Paycheck
+    assets:bank:checking               $420.00
+    income:part-time
+
+2026-03-14 Spring break bus ticket home
+    expenses:transport:bus pass         $45.00
+    assets:bank:checking
+
+2026-03-22 Groceries
+    expenses:food:groceries             $43.00
+    assets:bank:checking
+
+2026-03-25 Phone bill
+    expenses:phone                      $35.00
+    assets:bank:checking
+
+2026-03-26 * (PH-0326) Paycheck
+    assets:bank:checking               $420.00
+    income:part-time
+
+2026-03-28 Venmo to bank
+    assets:bank:checking               $420.00
+    assets:venmo

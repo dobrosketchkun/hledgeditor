@@ -1,0 +1,160 @@
+; Freelance Developer — Q1 2026
+; Tracks multiple client invoices, business expenses, estimated taxes,
+; and a EUR-paying client. Uses transaction codes for invoice numbers.
+
+; ── Chart of accounts ──
+
+account assets:bank:business           ; type: A
+account assets:bank:personal           ; type: A
+account assets:bank:tax reserve        ; type: A
+account assets:receivable              ; type: A
+account liabilities:credit card        ; type: L
+account income:clients:acme            ; type: R
+account income:clients:globex          ; type: R
+account income:clients:weber gmbh      ; type: R
+account expenses:tools:software        ; type: X
+account expenses:tools:hardware        ; type: X
+account expenses:office:coworking      ; type: X
+account expenses:office:supplies       ; type: X
+account expenses:travel                ; type: X
+account expenses:food:meals            ; type: X
+account expenses:taxes:estimated       ; type: X
+account expenses:insurance:liability   ; type: X
+account expenses:fees:payment          ; type: X
+account expenses:phone                 ; type: X
+account expenses:personal              ; type: X
+
+commodity $1,000.00
+commodity 1.000,00 EUR
+
+P 2026-01-01 EUR $1.08
+P 2026-02-01 EUR $1.09
+P 2026-03-01 EUR $1.10
+
+alias sw = expenses:tools:software
+alias hw = expenses:tools:hardware
+alias cw = expenses:office:coworking
+
+; ── January ──
+
+2026-01-02 * (INV-2601) Acme Corp — website redesign
+    assets:bank:business             $4,500.00
+    income:clients:acme
+
+2026-01-03 WeWork coworking — January
+    cw                                 $350.00
+    assets:bank:business
+
+2026-01-05 Figma annual subscription
+    sw                                 $144.00
+    liabilities:credit card
+
+2026-01-08 Client lunch — Acme
+    expenses:food:meals                 $38.00
+    assets:bank:business
+
+2026-01-10 * (INV-2602) Globex Inc — API integration
+    assets:bank:business             $3,200.00
+    income:clients:globex
+
+2026-01-15 Estimated tax payment — Q4 2025
+    expenses:taxes:estimated         $2,100.00
+    assets:bank:tax reserve
+
+2026-01-18 Phone bill
+    expenses:phone                      $85.00
+    assets:bank:business
+
+2026-01-20 Set aside 30% for taxes
+    assets:bank:tax reserve          $2,310.00
+    assets:bank:business
+
+2026-01-25 * (INV-2603) Weber GmbH — consulting  ; EUR client
+    assets:bank:business             2,400.00 EUR
+    income:clients:weber gmbh
+
+2026-01-28 Professional liability insurance — quarterly
+    expenses:insurance:liability       $420.00
+    assets:bank:business
+
+; ── February ──
+
+2026-02-01 WeWork coworking — February
+    cw                                 $350.00
+    assets:bank:business
+
+2026-02-05 New mechanical keyboard
+    hw                                 $189.00
+    liabilities:credit card
+
+2026-02-08 * (INV-2604) Acme Corp — monthly retainer
+    assets:bank:business             $3,000.00
+    income:clients:acme
+
+2026-02-12 GitHub Copilot — annual
+    sw                                 $100.00
+    assets:bank:business
+
+2026-02-14 Office supplies — notebooks, pens
+    expenses:office:supplies            $32.00
+    assets:bank:business
+
+2026-02-18 * (INV-2605) Globex Inc — bug fixes
+    assets:bank:business             $1,800.00
+    income:clients:globex
+
+2026-02-20 Transfer to personal
+    assets:bank:personal             $2,000.00
+    assets:bank:business
+
+2026-02-22 Credit card payment
+    liabilities:credit card            $333.00
+    assets:bank:business
+
+2026-02-25 Set aside 30% for taxes
+    assets:bank:tax reserve          $1,440.00
+    assets:bank:business
+
+; ── March ──
+
+2026-03-01 WeWork coworking — March
+    cw                                 $350.00
+    assets:bank:business
+
+2026-03-04 Client dinner — Globex
+    expenses:food:meals                 $72.00
+    assets:bank:business
+
+2026-03-07 * (INV-2606) Acme Corp — monthly retainer
+    assets:bank:business             $3,000.00
+    income:clients:acme
+
+2026-03-10 Flight to client site
+    expenses:travel                    $380.00
+    liabilities:credit card
+
+2026-03-12 * (INV-2607) Weber GmbH — phase 2
+    assets:bank:business             3,600.00 EUR
+    income:clients:weber gmbh
+
+2026-03-15 Stripe payment processing fees
+    expenses:fees:payment               $87.50
+    assets:bank:business
+
+2026-03-18 * (INV-2608) Globex Inc — dashboard feature
+    assets:bank:business             $5,200.00
+    income:clients:globex
+
+2026-03-20 Set aside 30% for taxes
+    assets:bank:tax reserve          $2,460.00
+    assets:bank:business
+
+2026-03-25 Transfer to personal
+    assets:bank:personal             $3,000.00
+    assets:bank:business
+
+2026-03-28 Credit card payment
+    liabilities:credit card            $380.00
+    assets:bank:business
+
+end aliases

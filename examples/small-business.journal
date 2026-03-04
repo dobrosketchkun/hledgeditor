@@ -1,0 +1,172 @@
+; Small Online Store — March 2026
+; An Etsy/Shopify seller tracking revenue, cost of goods,
+; shipping, payment fees, and business loan repayment.
+; Uses periodic transactions for recurring monthly costs.
+
+; ── Chart of accounts ──
+
+account assets:bank:business checking  ; type: A
+account assets:bank:savings            ; type: A
+account assets:paypal                  ; type: A
+account assets:inventory               ; type: A
+account assets:receivable              ; type: A
+account liabilities:business loan      ; type: L
+account liabilities:credit card        ; type: L
+account liabilities:sales tax payable  ; type: L
+account equity:owner investment        ; type: E
+account equity:owner draw              ; type: E
+account income:sales                   ; type: R
+account income:sales:etsy              ; type: R
+account income:sales:shopify           ; type: R
+account expenses:cogs                  ; type: X
+account expenses:shipping              ; type: X
+account expenses:fees:etsy             ; type: X
+account expenses:fees:shopify          ; type: X
+account expenses:fees:paypal           ; type: X
+account expenses:fees:payment          ; type: X
+account expenses:marketing:ads         ; type: X
+account expenses:marketing:packaging   ; type: X
+account expenses:office:supplies       ; type: X
+account expenses:office:software       ; type: X
+account expenses:payroll               ; type: X
+account expenses:payroll:taxes         ; type: X
+account expenses:insurance             ; type: X
+account expenses:loan:interest         ; type: X
+account expenses:loan:principal        ; type: X
+
+commodity $1,000.00
+
+; ── Recurring costs ──
+
+~ monthly
+    expenses:office:software             $79.00
+    expenses:insurance                  $185.00
+    assets:bank:business checking
+
+~ monthly
+    expenses:loan:principal             $350.00
+    expenses:loan:interest               $85.00
+    liabilities:business loan           $350.00
+    assets:bank:business checking      -$435.00
+
+; ── March transactions ──
+
+2026-03-01 * Shopify subscription
+    expenses:office:software             $79.00
+    assets:bank:business checking
+
+2026-03-01 * Business insurance — March
+    expenses:insurance                  $185.00
+    assets:bank:business checking
+
+2026-03-02 * Restocked ceramic mugs — 50 units @ $6.20
+    assets:inventory                    $310.00
+    liabilities:credit card
+
+2026-03-02 * Restocked tote bags — 100 units @ $3.50
+    assets:inventory                    $350.00
+    liabilities:credit card
+
+2026-03-03 (ETY-8841) Etsy sale — custom mug x2
+    assets:paypal                        $47.60
+    expenses:fees:etsy                    $4.40
+    expenses:cogs                        $12.40
+    expenses:shipping                     $7.80
+    liabilities:sales tax payable        -$3.82
+    income:sales:etsy                   -$68.38
+
+2026-03-05 (SHP-3301) Shopify sale — tote bag set
+    assets:bank:business checking        $32.10
+    expenses:fees:shopify                 $1.90
+    expenses:cogs                        $10.50
+    expenses:shipping                     $5.40
+    liabilities:sales tax payable        -$2.55
+    income:sales:shopify                -$47.35
+
+2026-03-07 (ETY-8842) Etsy sale — mug + tote bundle
+    assets:paypal                        $38.20
+    expenses:fees:etsy                    $3.80
+    expenses:cogs                         $9.70
+    expenses:shipping                     $8.30
+    liabilities:sales tax payable        -$3.04
+    income:sales:etsy                   -$56.96
+
+2026-03-08 Facebook ads — March campaign
+    expenses:marketing:ads              $150.00
+    liabilities:credit card
+
+2026-03-10 (SHP-3302) Shopify sale — 5x tote bags
+    assets:bank:business checking        $78.50
+    expenses:fees:shopify                 $4.50
+    expenses:cogs                        $17.50
+    expenses:shipping                    $12.00
+    liabilities:sales tax payable        -$5.73
+    income:sales:shopify               -$106.77
+
+2026-03-12 Branded packaging — tissue paper, stickers
+    expenses:marketing:packaging         $95.00
+    liabilities:credit card
+
+2026-03-14 (ETY-8843) Etsy sale — custom mug x4
+    assets:paypal                        $88.40
+    expenses:fees:etsy                    $7.60
+    expenses:cogs                        $24.80
+    expenses:shipping                    $14.20
+    liabilities:sales tax payable        -$6.87
+    income:sales:etsy                  -$128.13
+
+2026-03-15 * (PAY-03) Payroll — part-time assistant
+    expenses:payroll                    $680.00
+    expenses:payroll:taxes              $105.00
+    assets:bank:business checking
+
+2026-03-15 * Business loan payment
+    expenses:loan:principal             $350.00
+    expenses:loan:interest               $85.00
+    liabilities:business loan           $350.00
+    assets:bank:business checking      -$435.00
+
+2026-03-17 PayPal transfer to bank
+    assets:bank:business checking       $174.20
+    assets:paypal
+
+2026-03-18 (SHP-3303) Shopify sale — mug gift set x3
+    assets:bank:business checking       $101.30
+    expenses:fees:shopify                 $5.70
+    expenses:cogs                        $37.20
+    expenses:shipping                    $16.80
+    liabilities:sales tax payable        -$8.20
+    income:sales:shopify               -$152.80
+
+2026-03-20 Credit card payment
+    liabilities:credit card             $905.00
+    assets:bank:business checking
+
+2026-03-22 Office supplies — printer ink, labels
+    expenses:office:supplies             $48.00
+    assets:bank:business checking
+
+2026-03-24 (ETY-8844) Etsy sale — tote bag x6
+    assets:paypal                        $62.10
+    expenses:fees:etsy                    $5.90
+    expenses:cogs                        $21.00
+    expenses:shipping                    $18.60
+    liabilities:sales tax payable        -$5.48
+    income:sales:etsy                  -$102.12
+
+2026-03-26 Sales tax remittance — February
+    liabilities:sales tax payable        $48.20
+    assets:bank:business checking
+
+2026-03-28 Owner draw — March
+    equity:owner draw                  $2,000.00
+    assets:bank:business checking
+
+2026-03-29 Transfer to savings
+    assets:bank:savings                $500.00
+    assets:bank:business checking
+
+2026-03-31 * (PAY-03B) Payroll — part-time assistant
+    expenses:payroll                    $680.00
+    expenses:payroll:taxes              $105.00
+    assets:bank:business checking

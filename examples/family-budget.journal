@@ -1,0 +1,243 @@
+; Family Budget — March 2026
+; Dual-income household with two kids. Tracks joint accounts,
+; individual spending, childcare, mortgage, and monthly budget goals.
+
+; ── Chart of accounts ──
+
+account assets:bank:joint checking     ; type: A
+account assets:bank:joint savings      ; type: A
+account assets:bank:alex personal      ; type: A
+account assets:bank:sam personal       ; type: A
+account assets:kids:529 plan           ; type: A
+account liabilities:mortgage           ; type: L
+account liabilities:alex credit card   ; type: L
+account liabilities:sam credit card    ; type: L
+account liabilities:car loan           ; type: L
+account equity:opening balances        ; type: E
+account income:alex:salary             ; type: R
+account income:sam:salary              ; type: R
+account income:interest                ; type: R
+account expenses:housing:mortgage      ; type: X
+account expenses:housing:property tax  ; type: X
+account expenses:housing:insurance     ; type: X
+account expenses:housing:electric      ; type: X
+account expenses:housing:gas           ; type: X
+account expenses:housing:water         ; type: X
+account expenses:housing:maintenance   ; type: X
+account expenses:food:groceries        ; type: X
+account expenses:food:dining           ; type: X
+account expenses:kids:daycare          ; type: X
+account expenses:kids:activities       ; type: X
+account expenses:kids:clothing         ; type: X
+account expenses:kids:medical          ; type: X
+account expenses:transport:car payment ; type: X
+account expenses:transport:gas         ; type: X
+account expenses:transport:insurance   ; type: X
+account expenses:health:insurance      ; type: X
+account expenses:health:copays         ; type: X
+account expenses:subscriptions         ; type: X
+account expenses:personal:alex         ; type: X
+account expenses:personal:sam          ; type: X
+account expenses:education:529         ; type: X
+account expenses:gifts                 ; type: X
+account expenses:taxes:federal         ; type: X
+account expenses:taxes:state           ; type: X
+account expenses:taxes:fica            ; type: X
+
+commodity $1,000.00
+
+; ── Budget goals (monthly) ──
+
+~ monthly
+    expenses:food:groceries            $800.00
+    expenses:food:dining               $200.00
+    expenses:personal:alex             $150.00
+    expenses:personal:sam              $150.00
+    expenses:kids:activities           $200.00
+    expenses:housing:maintenance       $300.00
+    expenses:gifts                     $100.00
+    assets:bank:joint checking
+
+; ── Income — Alex (biweekly, 1st and 15th) ──
+
+2026-03-01 * (DD-A0301) Alex paycheck
+    assets:bank:joint checking       $3,120.00
+    expenses:taxes:federal             $680.00
+    expenses:taxes:state               $240.00
+    expenses:taxes:fica                $360.00
+    expenses:health:insurance          $200.00
+    expenses:education:529             $200.00
+    income:alex:salary              -$4,800.00
+
+2026-03-15 * (DD-A0315) Alex paycheck
+    assets:bank:joint checking       $3,120.00
+    expenses:taxes:federal             $680.00
+    expenses:taxes:state               $240.00
+    expenses:taxes:fica                $360.00
+    expenses:health:insurance          $200.00
+    expenses:education:529             $200.00
+    income:alex:salary              -$4,800.00
+
+; ── Income — Sam (biweekly, 7th and 21st) ──
+
+2026-03-07 * (DD-S0307) Sam paycheck
+    assets:bank:joint checking       $2,450.00
+    expenses:taxes:federal             $480.00
+    expenses:taxes:state               $170.00
+    expenses:taxes:fica                $280.00
+    expenses:health:insurance          $120.00
+    income:sam:salary               -$3,500.00
+
+2026-03-21 * (DD-S0321) Sam paycheck
+    assets:bank:joint checking       $2,450.00
+    expenses:taxes:federal             $480.00
+    expenses:taxes:state               $170.00
+    expenses:taxes:fica                $280.00
+    expenses:health:insurance          $120.00
+    income:sam:salary               -$3,500.00
+
+; ── Fixed monthly bills ──
+
+2026-03-01 * Mortgage payment
+    expenses:housing:mortgage        $2,200.00
+    assets:bank:joint checking
+
+2026-03-01 * Daycare — Little Stars (2 kids)
+    expenses:kids:daycare            $2,400.00
+    assets:bank:joint checking
+
+2026-03-05 * Car loan payment
+    expenses:transport:car payment     $420.00
+    assets:bank:joint checking
+
+2026-03-05 * Car insurance — 6mo premium / 6
+    expenses:transport:insurance       $165.00
+    assets:bank:joint checking
+
+2026-03-08 Subscriptions — streaming bundle
+    expenses:subscriptions              $45.00
+    assets:bank:joint checking
+
+2026-03-10 Electric bill
+    expenses:housing:electric          $145.00
+    assets:bank:joint checking
+
+2026-03-10 Gas bill
+    expenses:housing:gas                $68.00
+    assets:bank:joint checking
+
+2026-03-12 Water/sewer
+    expenses:housing:water              $52.00
+    assets:bank:joint checking
+
+; ── Groceries (weekly runs) ──
+
+2026-03-02 Costco — weekly groceries
+    expenses:food:groceries            $215.00
+    assets:bank:joint checking
+
+2026-03-09 Trader Joe's
+    expenses:food:groceries            $148.00
+    assets:bank:joint checking
+
+2026-03-16 Costco
+    expenses:food:groceries            $198.00
+    assets:bank:joint checking
+
+2026-03-23 Trader Joe's + Target
+    expenses:food:groceries            $172.00
+    assets:bank:joint checking
+
+2026-03-30 Costco
+    expenses:food:groceries            $205.00
+    assets:bank:joint checking
+
+; ── Dining / takeout ──
+
+2026-03-06 Pizza night — family takeout
+    expenses:food:dining                $42.00
+    assets:bank:joint checking
+
+2026-03-14 Date night — Alex & Sam
+    expenses:food:dining                $95.00
+    liabilities:alex credit card
+
+2026-03-22 Sunday brunch
+    expenses:food:dining                $58.00
+    assets:bank:joint checking
+
+; ── Kids ──
+
+2026-03-04 Swim lessons — Emma (March session)
+    expenses:kids:activities           $120.00
+    assets:bank:joint checking
+
+2026-03-11 Pediatrician copay — Liam  ; annual checkup
+    expenses:kids:medical               $30.00
+    liabilities:sam credit card
+
+2026-03-18 Target — spring clothes for kids
+    expenses:kids:clothing              $86.00
+    liabilities:sam credit card
+
+2026-03-25 Birthday party supplies  ; Liam turns 4
+    expenses:gifts                      $65.00
+    assets:bank:joint checking
+
+; ── Personal spending ──
+
+2026-03-03 Alex — gym membership
+    expenses:personal:alex              $50.00
+    assets:bank:alex personal
+
+2026-03-08 Sam — book club books
+    expenses:personal:sam               $34.00
+    assets:bank:sam personal
+
+2026-03-15 Alex — new running shoes
+    expenses:personal:alex              $125.00
+    liabilities:alex credit card
+
+2026-03-20 Sam — haircut
+    expenses:personal:sam               $55.00
+    assets:bank:sam personal
+
+; ── House stuff ──
+
+2026-03-13 Plumber — fixed kitchen faucet
+    expenses:housing:maintenance       $180.00
+    assets:bank:joint checking
+
+2026-03-27 Home Depot — garden supplies
+    expenses:housing:maintenance        $67.00
+    assets:bank:joint checking
+
+; ── Transport ──
+
+2026-03-04 Gas station
+    expenses:transport:gas              $55.00
+    assets:bank:joint checking
+
+2026-03-18 Gas station
+    expenses:transport:gas              $52.00
+    assets:bank:joint checking
+
+; ── Credit card payments ──
+
+2026-03-20 Alex credit card payment
+    liabilities:alex credit card       $220.00
+    assets:bank:alex personal
+
+2026-03-20 Sam credit card payment
+    liabilities:sam credit card        $116.00
+    assets:bank:sam personal
+
+; ── Savings ──
+
+2026-03-28 Transfer to savings
+    assets:bank:joint savings          $800.00
+    assets:bank:joint checking
+
+2026-03-28 529 plan contribution  ; $200/paycheck already via payroll
+    assets:kids:529 plan               $400.00
+    expenses:education:529            -$400.00

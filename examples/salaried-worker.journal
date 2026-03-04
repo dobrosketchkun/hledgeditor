@@ -1,0 +1,155 @@
+; Salaried Worker — March 2026
+; A typical office worker tracking paycheck, bills, daily spending,
+; credit card usage, and savings. Uses status markers for reconciliation.
+
+; ── Chart of accounts ──
+
+account assets:bank:checking           ; type: A
+account assets:bank:savings            ; type: A
+account assets:cash                    ; type: A
+account assets:retirement:401k         ; type: A
+account liabilities:credit card        ; type: L
+account liabilities:mortgage           ; type: L
+account equity:opening balances        ; type: E
+account income:salary                  ; type: R
+account income:salary:gross            ; type: R
+account expenses:housing:mortgage      ; type: X
+account expenses:housing:electric      ; type: X
+account expenses:housing:water         ; type: X
+account expenses:housing:internet      ; type: X
+account expenses:food:groceries        ; type: X
+account expenses:food:dining           ; type: X
+account expenses:food:coffee           ; type: X
+account expenses:transport:gas         ; type: X
+account expenses:transport:insurance   ; type: X
+account expenses:health:insurance      ; type: X
+account expenses:subscriptions         ; type: X
+account expenses:clothing              ; type: X
+account expenses:personal              ; type: X
+account expenses:taxes:federal         ; type: X
+account expenses:taxes:state           ; type: X
+account expenses:taxes:fica            ; type: X
+account expenses:retirement:401k       ; type: X
+
+commodity $1,000.00
+
+; ── Opening balances ──
+
+2026-01-01 * Opening balances
+    assets:bank:checking             $4,820.00
+    assets:bank:savings             $15,000.00
+    assets:cash                        $120.00
+    liabilities:credit card            $-640.00
+    liabilities:mortgage          $-198,500.00
+    assets:retirement:401k          $47,200.00
+    equity:opening balances
+
+; ── March transactions ──
+
+2026-03-01 * Mortgage payment  ; auto-debit
+    expenses:housing:mortgage        $1,450.00
+    assets:bank:checking
+
+2026-03-01 * Health insurance premium  ; payroll deduction
+    expenses:health:insurance          $280.00
+    assets:bank:checking
+
+2026-03-02 Grocery run
+    expenses:food:groceries             $78.40
+    assets:bank:checking
+
+2026-03-03 Shell gas station
+    expenses:transport:gas              $52.00
+    liabilities:credit card
+
+2026-03-04 Morning coffee
+    expenses:food:coffee                 $5.75
+    assets:cash
+
+2026-03-05 Netflix + Spotify
+    expenses:subscriptions              $26.98
+    assets:bank:checking
+
+2026-03-07 Target — new shirt
+    expenses:clothing                   $34.99
+    liabilities:credit card
+
+2026-03-08 Dinner with friends
+    expenses:food:dining                $42.00
+    liabilities:credit card
+
+2026-03-09 Grocery run
+    expenses:food:groceries             $63.20
+    assets:bank:checking
+
+2026-03-12 Electric bill
+    expenses:housing:electric           $95.00
+    assets:bank:checking
+
+2026-03-13 Water bill
+    expenses:housing:water              $38.00
+    assets:bank:checking
+
+2026-03-14 Internet bill
+    expenses:housing:internet           $65.00
+    assets:bank:checking
+
+2026-03-15 * (DD-0315) Paycheck  ; bi-weekly direct deposit
+    assets:bank:checking             $2,680.00
+    expenses:taxes:federal             $520.00
+    expenses:taxes:state               $185.00
+    expenses:taxes:fica                $310.00
+    expenses:retirement:401k           $305.00
+    income:salary:gross             -$4,000.00
+
+2026-03-16 Grocery run
+    expenses:food:groceries             $91.10
+    assets:bank:checking
+
+2026-03-17 Haircut
+    expenses:personal                   $28.00
+    assets:cash
+
+2026-03-18 ! Car insurance  ; pending — check hasn't cleared
+    expenses:transport:insurance       $145.00
+    assets:bank:checking
+
+2026-03-20 Credit card payment
+    liabilities:credit card            $640.00
+    assets:bank:checking
+
+2026-03-21 Lunch out
+    expenses:food:dining                $16.50
+    assets:bank:checking
+
+2026-03-22 Weekend groceries
+    expenses:food:groceries             $55.30
+    assets:bank:checking
+
+2026-03-24 Amazon — household stuff
+    expenses:personal                   $47.80
+    liabilities:credit card
+
+2026-03-26 Coffee beans for home
+    expenses:food:coffee                $18.00
+    assets:bank:checking
+
+2026-03-28 Transfer to savings
+    assets:bank:savings                $500.00
+    assets:bank:checking
+
+2026-03-29 * (DD-0329) Paycheck
+    assets:bank:checking             $2,680.00
+    expenses:taxes:federal             $520.00
+    expenses:taxes:state               $185.00
+    expenses:taxes:fica                $310.00
+    expenses:retirement:401k           $305.00
+    income:salary:gross             -$4,000.00
+
+2026-03-30 Grocery run
+    expenses:food:groceries             $72.00
+    assets:bank:checking
+
+2026-03-31 Gas station
+    expenses:transport:gas              $48.00
+    liabilities:credit card
