@@ -32,7 +32,6 @@ account expenses:payroll               ; type: X
 account expenses:payroll:taxes         ; type: X
 account expenses:insurance             ; type: X
 account expenses:loan:interest         ; type: X
-account expenses:loan:principal        ; type: X
 
 commodity $1,000.00
 
@@ -44,9 +43,8 @@ commodity $1,000.00
     assets:bank:business checking
 
 ~ monthly
-    expenses:loan:principal             $350.00
-    expenses:loan:interest               $85.00
     liabilities:business loan           $350.00
+    expenses:loan:interest               $85.00
     assets:bank:business checking      -$435.00
 
 ; ── March transactions ──
@@ -121,9 +119,8 @@ commodity $1,000.00
     assets:bank:business checking
 
 2026-03-15 * Business loan payment
-    expenses:loan:principal             $350.00
-    expenses:loan:interest               $85.00
     liabilities:business loan           $350.00
+    expenses:loan:interest               $85.00
     assets:bank:business checking      -$435.00
 
 2026-03-17 PayPal transfer to bank

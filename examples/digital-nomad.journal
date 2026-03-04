@@ -51,7 +51,7 @@ P 2026-03-01 EUR $1.10
 ; ── Currency exchange ──
 
 2026-03-02 Wise transfer — USD to THB for monthly spending
-    assets:bank:wise                 60,000 THB
+    assets:bank:wise                 60,000 THB @ $0.028
     expenses:fees:transfer              $12.00
     assets:bank:us checking         -$1,692.00
 

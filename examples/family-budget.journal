@@ -30,7 +30,7 @@ account expenses:kids:daycare          ; type: X
 account expenses:kids:activities       ; type: X
 account expenses:kids:clothing         ; type: X
 account expenses:kids:medical          ; type: X
-account expenses:transport:car payment ; type: X
+account expenses:transport:car payment  ; type: X
 account expenses:transport:gas         ; type: X
 account expenses:transport:insurance   ; type: X
 account expenses:health:insurance      ; type: X
