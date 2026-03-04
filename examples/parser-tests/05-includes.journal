@@ -1,0 +1,11 @@
+; Parser test: include directive
+; Expected:
+; - No parse errors on include line
+; - Root transaction validates normally
+; - Included file's accounts and transactions contribute to analysis
+
+include ./05-includes-sub.journal
+
+2026-03-20 Root transaction
+    assets:cash                        $20.00
+    income:misc                       -$20.00

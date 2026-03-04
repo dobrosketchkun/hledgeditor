@@ -1,0 +1,116 @@
+; Parser test: kitchen sink — realistic mixed journal
+; Expected: exercises all features together; errors only where noted
+
+; ── Declarations ──
+
+account assets:bank:checking           ; type: A
+account assets:bank:savings            ; type: A
+account assets:cash                    ; type: A
+account liabilities:credit card        ; type: L
+account equity:opening balances        ; type: E
+account income:salary                  ; type: R
+account income:freelance               ; type: R
+account expenses:food:groceries        ; type: X
+account expenses:food:dining           ; type: X
+account expenses:rent                  ; type: X
+account expenses:utilities             ; type: X
+account expenses:transport             ; type: X
+account expenses:subscriptions         ; type: X
+
+commodity $1,000.00
+commodity 1.000,00 EUR
+
+P 2026-01-01 EUR $1.08
+P 2026-03-01 EUR $1.10
+
+D $1,000.00
+decimal-mark .
+Y 2026
+
+payee Grocery Mart
+payee Electric Co
+payee Netflix
+
+alias food = expenses:food
+
+; ── Budget rules ──
+
+~ monthly
+    expenses:rent                    $2,000.00
+    assets:bank:checking
+
+~ weekly
+    expenses:food:groceries            $100.00
+    assets:bank:checking
+
+= expenses:food:dining
+    (budget:dining)                    *-1
+
+; ── Comment block ──
+
+comment
+Chart of accounts notes:
+- assets = things we own
+- liabilities = things we owe
+- equity = net worth tracking
+- income/revenue = money coming in
+- expenses = money going out
+end comment
+
+; ── Opening ──
+
+2026-01-01 * Opening balances
+    assets:bank:checking             $5,200.00
+    assets:bank:savings             $12,000.00
+    assets:cash                        $340.00
+    liabilities:credit card          -$1,850.00
+    equity:opening balances
+
+; ── Daily transactions ──
+
+# March spending
+
+2026-03-02 Grocery Mart  ; weekly run
+    expenses:food:groceries             $67.30
+    assets:bank:checking
+
+2026-03-03 Gas station
+    expenses:transport                  $45.00
+    liabilities:credit card
+
+2026-03-05 ! Netflix subscription
+    expenses:subscriptions              $15.99
+    assets:bank:checking
+
+2026-03-08 Coffee shop  ; paid cash
+    expenses:food:dining                 $5.50
+    assets:cash
+
+2026-03-15 * (DD-001) Salary
+    assets:bank:checking             $3,800.00
+    income:salary
+
+2026-03-18 Electric Co
+    expenses:utilities                 $110.00
+    assets:bank:checking
+
+2026-03-20 Credit card payment
+    liabilities:credit card          $1,850.00
+    assets:bank:checking
+
+2026-03-22 Transfer to savings
+    assets:bank:savings              $1,000.00
+    assets:bank:checking
+
+2026-03-25 (INV-77) Freelance payment
+    assets:bank:checking               $500.00
+    income:freelance
+
+2026-03-28 New headphones
+    expenses:subscriptions             $149.99
+    assets:bank:checking
+
+; ── EUR transaction ──
+2026-03-30 European vendor
+    expenses:food:groceries             30 EUR
+    assets:bank:checking              -30 EUR

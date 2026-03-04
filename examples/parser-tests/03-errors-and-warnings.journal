@@ -1,0 +1,57 @@
+; Parser test: error detection
+; Expected errors described per transaction
+
+; ── Invalid date (month 13) ──
+; Expected: "Invalid date" error
+2026-13-01 Invalid month
+    assets:cash                        10
+    income:misc                       -10
+
+; ── Invalid date (Feb 30) ──
+; Expected: "Invalid date" error
+2026-02-30 Impossible day
+    assets:cash                        10
+    income:misc                       -10
+
+; ── Single-space separator between account and amount ──
+; Expected: "Need at least 2 spaces" error
+2026-03-02 Single space separator
+    assets:cash $10
+    income:misc                       -$10
+
+; ── Too many inferred (blank) amounts ──
+; Expected: "Only one posting can have an inferred amount" error
+2026-03-03 Two blanks
+    assets:cash
+    expenses:food
+
+; ── Unbalanced transaction ──
+; Expected: "Transaction doesn't balance" error
+2026-03-04 Off by two
+    assets:cash                        10
+    income:misc                        -8
+
+; ── Unbalanced multi-commodity ──
+; Expected: "Transaction doesn't balance" for EUR
+2026-03-05 Multi-commodity off
+    assets:wallet                      10 USD
+    income:salary                     -10 USD
+    assets:eurocash                    5 EUR
+    income:fx                         -4 EUR
+
+; ── Unparseable amount ──
+; Expected: "Could not parse amount" error
+2026-03-06 Bad amount
+    assets:cash                        ten USD
+    income:misc                       -10 USD
+
+; ── Only one posting ──
+; Expected: "Transaction needs at least 2 postings" error
+2026-03-07 Solo posting
+    expenses:food                      $10
+
+; ── Posting with less than 2 spaces indent ──
+; Expected: "Posting must be indented at least 2 spaces" error
+2026-03-08 Bad indent
+ assets:cash                           10
+ income:misc                          -10

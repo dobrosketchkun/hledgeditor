@@ -1,0 +1,51 @@
+; Parser test: account directives
+; Expected:
+; - All declared accounts appear in autocomplete
+; - "expenses:groceries" used once but declared → NO typo warning
+; - "expenses:grocereis" used once, NOT declared, close to "expenses:groceries" → typo warning
+
+; ── Basic account declarations ──
+account assets:bank:checking
+account assets:bank:savings
+account assets:cash
+account liabilities:credit card
+account equity:opening balances
+account income:salary
+account income:freelance
+
+; ── Account with same-line comment (2+ spaces before ;) ──
+account expenses:food          ; type: X
+account expenses:groceries     ; weekly staples
+account expenses:rent          ; monthly housing
+
+; ── Account with indented subdirectives (should be ignored) ──
+account expenses:utilities
+    format subdirective  ; hledger ignores these
+    some other subdirective
+
+account revenues:consulting
+    note: primary income source
+
+; ── Declared but never used in any transaction ──
+; Should still appear in autocomplete
+account expenses:insurance
+account expenses:medical
+
+; ── Transaction using declared accounts ──
+; "expenses:groceries" is declared above → should NOT trigger typo warning
+; even though it's only used once in transactions
+2026-03-01 Weekly groceries
+    expenses:groceries                  $85.00
+    assets:bank:checking
+
+; ── Transaction with a likely typo ──
+; "expenses:grocereis" is NOT declared and differs from "expenses:groceries"
+; by Levenshtein distance 2 → SHOULD trigger typo warning
+2026-03-02 Typo transaction
+    expenses:grocereis                  $12.00
+    assets:cash
+
+; ── Regular transaction using other declared accounts ──
+2026-03-15 Salary deposit
+    assets:bank:checking             $3,800.00
+    income:salary

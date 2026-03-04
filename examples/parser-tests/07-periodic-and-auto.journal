@@ -1,0 +1,49 @@
+; Parser test: periodic transactions (~) and auto postings (=)
+; Expected:
+; - No parse errors for ~ and = blocks
+; - Accounts from periodic/auto postings appear in autocomplete
+; - Periodic/auto postings are NOT validated for balance
+
+; ── Simple periodic transaction ──
+~ monthly
+    expenses:rent                    $2,000.00
+    assets:bank:checking
+
+; ── Periodic with date range ──
+~ monthly from 2026-04-15 to 2026-06-16
+    expenses:utilities                 $400.00
+    assets:bank:checking
+
+; ── Periodic with description (2+ space separation) ──
+~ every 2 months  budget review
+    expenses:subscriptions             $100.00
+    assets:bank:checking
+
+; ── Weekly periodic ──
+~ weekly
+    expenses:food:groceries             $75.00
+    assets:cash
+
+; ── Auto posting: dollar amount ──
+= expenses:food
+    (liabilities:charity)              $-1.00
+
+; ── Auto posting: multiplier amounts ──
+; Note: *-1 and *1 are special auto-posting syntax that
+; the amount parser doesn't understand (and shouldn't error on)
+= expenses:gifts
+    assets:checking:gifts              *-1
+    assets:checking                    *1
+
+; ── Auto posting with bare = ──
+= expenses:dining
+    (budget:dining)                    *-1
+
+; ── Regular transaction (to have something to analyse alongside) ──
+2026-03-01 Groceries
+    expenses:food:groceries             $50.00
+    assets:bank:checking
+
+2026-03-05 Birthday gift
+    expenses:gifts                      $30.00
+    assets:bank:checking

@@ -1,0 +1,55 @@
+; Parser test: core transaction parsing
+; Expected: all transactions valid, 0 errors
+
+; ── Date format: YYYY-MM-DD ──
+2026-03-01 Opening balances
+    assets:bank:checking              $5,200.00
+    assets:bank:savings              $12,000.00
+    equity:opening balances
+
+; ── Date format: YYYY/MM/DD ──
+2026/03/02 Grocery store
+    expenses:food:groceries             $67.30
+    assets:bank:checking
+
+; ── Date format: YYYY.MM.DD ──
+2026.03.03 Gas station
+    expenses:transport:fuel             $45.00
+    assets:bank:checking
+
+; ── Status: pending (!) ──
+2026-03-04 ! Pending payment
+    expenses:utilities                 $110.00
+    assets:bank:checking
+
+; ── Status: cleared (*) ──
+2026-03-05 * Cleared salary
+    assets:bank:checking             $3,800.00
+    income:salary
+
+; ── Transaction code ──
+2026-03-06 (INV-042) Freelance invoice
+    assets:bank:checking               $500.00
+    income:freelance
+
+; ── Status + code ──
+2026-03-07 * (REF-99) Confirmed wire transfer
+    assets:bank:savings              $2,000.00
+    assets:bank:checking
+
+; ── Description with inline comment ──
+2026-03-08 Coffee shop  ; paid cash
+    expenses:food:coffee                 $5.50
+    assets:cash
+
+; ── Inferred amount (one blank posting) ──
+2026-03-09 Book purchase
+    expenses:shopping                   $24.99
+    assets:bank:checking
+
+; ── Many postings, one inferred ──
+2026-03-10 Complex split
+    expenses:food:groceries             $30.00
+    expenses:food:snacks                $12.00
+    expenses:household                  $18.50
+    assets:bank:checking

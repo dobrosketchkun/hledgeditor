@@ -1,0 +1,10 @@
+; Included test file
+; Expected: parsed via include resolution; accounts appear in sidebar
+
+2026-03-21 Included transaction
+    expenses:food                       $7.00
+    assets:cash                        -$7.00
+
+2026-03-22 Another included tx
+    expenses:transport                  $12.00
+    assets:bank:checking              -$12.00

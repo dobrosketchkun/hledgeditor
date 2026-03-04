@@ -1,0 +1,49 @@
+; Parser test: comments and whitespace handling
+; Expected: 0 errors; all comments highlighted as comments
+
+; This is a semicolon full-line comment
+
+# This is a hash full-line comment
+
+; ── Transaction with inline comment on header ──
+2026-03-01 Groceries  ; weekly shopping
+    expenses:food:groceries             $45.00
+    assets:bank:checking
+
+; ── Posting with inline comment ──
+2026-03-02 Coffee
+    expenses:food:coffee                 $4.50  ; morning latte
+    assets:cash
+
+; ── Blank lines separate transactions ──
+
+2026-03-03 First
+    expenses:misc                       $10.00
+    assets:cash
+
+2026-03-03 Second
+    expenses:misc                       $20.00
+    assets:cash
+
+; ── comment/end comment block ──
+; Everything between these keywords is ignored by the parser
+
+comment
+This entire block is a comment.
+It can contain anything: dates, amounts, random text.
+2026-99-99 This is NOT parsed as a transaction
+    not:a:real:posting  $999
+Even directive keywords like "account" are ignored here.
+end comment
+
+; ── Transaction after comment block should parse normally ──
+2026-03-04 After comment block
+    expenses:food                       $15.00
+    assets:bank:checking
+
+; ── Mixed comments between transactions ──
+; This comment separates transactions
+# So does this one
+2026-03-05 Final transaction
+    expenses:shopping                   $50.00
+    assets:bank:checking

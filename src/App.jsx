@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from "react";
-import { parseJournal, collectAccounts, findTypoWarnings, highlightLine } from "./parser.js";
+import { parseJournal, collectAccounts, findTypoWarnings, highlightLine, buildCommentBlockLines } from "./parser.js";
 import { getTheme, themeCssVars, THEMES } from "./themes/index.js";
 
 /* ─── styles ─────────────────────────────────────────────────────── */
@@ -224,8 +224,8 @@ function ErrorPanel({ errors, warnings, onClickError, onAutofix, panelMode, setP
 
 /* ─── Accounts Sidebar ───────────────────────────────────────────── */
 
-function AccountsSidebar({ transactions, highlightedAccounts, onClickAccount }) {
-  const counts = collectAccounts(transactions);
+function AccountsSidebar({ transactions, directives, highlightedAccounts, onClickAccount }) {
+  const counts = collectAccounts(transactions, directives);
   const grouped = {};
   for (const [acct, count] of Object.entries(counts)) {
     const top = acct.split(":")[0];
@@ -1956,20 +1956,34 @@ export default function App() {
 
   // ─── Parse ─────────────────────────────────────────────────────
   const lines = text.split("\n");
-  const transactionsRoot = useMemo(() => parseJournal(text, "root"), [text]);
-  const transactionsIncluded = useMemo(
-    () => includedFiles.flatMap((f) => parseJournal(f.content || "", f.filePath || "include")),
+  const parsedRoot = useMemo(() => parseJournal(text, "root"), [text]);
+  const transactionsRoot = parsedRoot.transactions;
+  const directivesRoot = parsedRoot.directives;
+  const parsedIncludes = useMemo(
+    () => includedFiles.map((f) => parseJournal(f.content || "", f.filePath || "include")),
     [includedFiles]
+  );
+  const transactionsIncluded = useMemo(
+    () => parsedIncludes.flatMap((p) => p.transactions),
+    [parsedIncludes]
+  );
+  const directivesIncluded = useMemo(
+    () => parsedIncludes.flatMap((p) => p.directives),
+    [parsedIncludes]
   );
   const transactionsForAnalysis = useMemo(
     () => [...transactionsRoot, ...transactionsIncluded],
     [transactionsRoot, transactionsIncluded]
   );
-  const accountNames = useMemo(
-    () => Object.keys(collectAccounts(transactionsForAnalysis)).sort((a, b) => a.localeCompare(b)),
-    [transactionsForAnalysis]
+  const directivesForAnalysis = useMemo(
+    () => [...directivesRoot, ...directivesIncluded],
+    [directivesRoot, directivesIncluded]
   );
-  const typoWarnings = useMemo(() => findTypoWarnings(transactionsForAnalysis), [transactionsForAnalysis]);
+  const accountNames = useMemo(
+    () => Object.keys(collectAccounts(transactionsForAnalysis, directivesForAnalysis)).sort((a, b) => a.localeCompare(b)),
+    [transactionsForAnalysis, directivesForAnalysis]
+  );
+  const typoWarnings = useMemo(() => findTypoWarnings(transactionsForAnalysis, directivesForAnalysis), [transactionsForAnalysis, directivesForAnalysis]);
   const rootTypoWarnings = useMemo(
     () => typoWarnings.filter((w) => (w.source || "root") === "root"),
     [typoWarnings]
@@ -1978,7 +1992,7 @@ export default function App() {
   const accountHighlightLines = useMemo(() => {
     if (highlightedAccounts.size === 0) return new Set();
     const patterns = [...highlightedAccounts].map(
-      (acct) => new RegExp(`(?<=^\\s*(?:[*!]\\s+)?)${escapeRegexLiteral(acct)}(?=\\s|$)`)
+      (acct) => new RegExp(`(?<=^\\s*(?:[*!]\\s+)?)[(\\[]?${escapeRegexLiteral(acct)}[)\\]]?(?=\\s|$)`)
     );
     const set = new Set();
     for (let i = 0; i < lines.length; i++) {
@@ -2000,7 +2014,8 @@ export default function App() {
 
   const errorLines = new Set(allErrors.map((e) => e.line));
   const warningLines = new Set(allWarnings.map((w) => w.line));
-  const highlighted = lines.map((line, i) => highlightLine(line, i, errorLines, warningLines));
+  const commentBlockLines = useMemo(() => buildCommentBlockLines(directivesRoot), [directivesRoot]);
+  const highlighted = lines.map((line, i) => highlightLine(line, i, errorLines, warningLines, commentBlockLines));
   const lineStartOffsets = useMemo(() => {
     let pos = 0;
     return lines.map((line) => {
@@ -2386,6 +2401,7 @@ export default function App() {
         </div>
         <AccountsSidebar
           transactions={transactionsForAnalysis}
+          directives={directivesForAnalysis}
           highlightedAccounts={highlightedAccounts}
           onClickAccount={(acct, e) => {
             setHighlightedAccounts((prev) => {

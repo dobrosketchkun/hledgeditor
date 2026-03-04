@@ -1,0 +1,68 @@
+; Parser test: amounts and commodity formats
+; Expected: all transactions valid, 0 errors
+
+; ── Prefix currency symbol ──
+2026-03-01 Prefix dollar
+    assets:bank:checking              $100.00
+    income:salary                    -$100.00
+
+2026-03-01 Prefix euro
+    assets:cash                       €50.00
+    income:gift                      -€50.00
+
+2026-03-01 Prefix pound
+    assets:cash                       £75.00
+    income:gift                      -£75.00
+
+; ── Suffix commodity ──
+2026-03-02 Suffix commodity
+    assets:cash                       100 USD
+    income:salary                    -100 USD
+
+; ── Commodity-first (symbol before number) ──
+2026-03-03 Symbol then number
+    assets:cash                       USD 50
+    income:gift                       USD -50
+
+; ── Negative amounts ──
+2026-03-04 Negative prefix sign
+    expenses:food                      $25.00
+    assets:cash                       -$25.00
+
+2026-03-04 Negative inside symbol
+    expenses:food                      $10.00
+    assets:cash                        $-10.00
+
+2026-03-04 Negative suffix
+    expenses:food                      10 EUR
+    assets:cash                       -10 EUR
+
+; ── Thousands separators ──
+2026-03-05 Thousands with comma
+    assets:bank:checking             $1,500.00
+    income:salary                   -$1,500.00
+
+2026-03-05 Large amount
+    assets:investments              $25,000.00
+    assets:bank:savings            -$25,000.00
+
+; ── Bare number (no commodity) ──
+2026-03-06 Bare numbers
+    assets:cash                        50
+    income:misc                       -50
+
+; ── Multi-commodity transaction ──
+2026-03-07 Multi-commodity balanced
+    assets:wallet                      10 USD
+    income:salary                     -10 USD
+    assets:eurocash                    5 EUR
+    income:fx                         -5 EUR
+
+; ── Cost notation (@ and @@) ──
+2026-03-08 Per-unit cost
+    assets:investments                 10 AAPL @ $150.00
+    assets:bank:checking           -$1,500.00
+
+2026-03-08 Total cost
+    assets:investments                 5 GOOG @@ $750.00
+    assets:bank:checking             -$750.00

@@ -1,0 +1,72 @@
+; Parser test: all remaining directives
+; Expected: 0 parse errors; all directive lines highlighted with keywords
+
+; ── commodity directives ──
+commodity $1,000.00
+commodity 1.000,00 EUR
+commodity 1 000 000.0000
+
+; commodity with bare symbol
+commodity INR
+
+; commodity with format subdirective
+commodity JPY
+    format JPY 1,000
+
+; ── P (market price) directives ──
+P 2026-01-01 EUR $1.08
+P 2026-01-01 GBP $1.27
+P 2026-03-01 AAPL $178.50
+P 2026-03-01 BTC $62,000.00
+
+; ── alias directives ──
+; basic alias
+alias food = expenses:food
+alias checking = assets:bank:checking
+
+; regex alias
+alias /^income/  = revenues
+
+; ── end aliases ──
+end aliases
+
+; ── D (default commodity) ──
+D $1,000.00
+
+; ── payee directives ──
+payee Whole Foods
+payee Amazon
+payee Electric Company  ; utility provider
+
+; payee with subdirective
+payee Local Café
+    some subdirective
+
+; ── tag directives ──
+tag project
+tag client
+tag item-id  ; for receipt tracking
+
+; tag with subdirective
+tag category
+    values: groceries, dining, transport
+
+; ── decimal-mark ──
+decimal-mark .
+
+; ── Y (year) directive ──
+Y 2026
+
+; ── apply account / end apply account ──
+apply account personal
+
+2026-03-01 Groceries
+    expenses:food                       $40.00
+    assets:cash
+
+end apply account
+
+; ── Transaction after directives to verify nothing broke ──
+2026-03-15 Salary
+    assets:bank:checking             $3,800.00
+    income:salary                   -$3,800.00
