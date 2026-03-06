@@ -312,8 +312,8 @@ function parseIncludeTarget(raw) {
   return quoted ? quoted[1] : withoutComment;
 }
 
-function resolveIncludes(content, baseFilePath, visited = new Set(), out = []) {
-  if (!baseFilePath) return out;
+function resolveIncludes(content, baseFilePath, visited = new Set(), out = [], failed = []) {
+  if (!baseFilePath) return { resolved: out, failed };
   const baseDir = path.dirname(baseFilePath);
   const lines = content.split("\n");
 
@@ -324,7 +324,10 @@ function resolveIncludes(content, baseFilePath, visited = new Set(), out = []) {
     if (!target) continue;
 
     const resolved = path.resolve(baseDir, target);
-    if (!fs.existsSync(resolved)) continue;
+    if (!fs.existsSync(resolved)) {
+      failed.push({ target, line: i, sourceFile: baseFilePath });
+      continue;
+    }
 
     let realPath;
     try {
@@ -339,19 +342,20 @@ function resolveIncludes(content, baseFilePath, visited = new Set(), out = []) {
     try {
       includedContent = fs.readFileSync(realPath, "utf-8");
     } catch {
+      failed.push({ target, line: i, sourceFile: baseFilePath });
       continue;
     }
 
     out.push({ filePath: realPath, content: includedContent });
-    resolveIncludes(includedContent, realPath, visited, out);
+    resolveIncludes(includedContent, realPath, visited, out, failed);
   }
-  return out;
+  return { resolved: out, failed };
 }
 
 ipcMain.handle("resolve-includes", (_, payload) => {
   const content = payload?.content || "";
   const filePath = payload?.filePath || null;
-  if (!filePath) return [];
+  if (!filePath) return { resolved: [], failed: [] };
   return resolveIncludes(content, filePath);
 });
 

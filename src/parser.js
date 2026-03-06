@@ -383,7 +383,9 @@ export function parseJournal(text, source = "root") {
     let m;
 
     // include
-    if (/^include\s+(.+)$/i.test(trimmed)) {
+    if ((m = trimmed.match(/^include\s+(.+)$/i))) {
+      const target = parseIncludeTarget(m[1]);
+      if (target) directives.push({ type: "include", line: i, target, source });
       continue;
     }
 

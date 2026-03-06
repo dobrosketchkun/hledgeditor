@@ -1120,8 +1120,10 @@ function buildAccountSuggestionModel(fullText, cursorPos, accountNames, prevSugg
 
   const amountSepPos = body.search(/\s{2,}/);
   const accountEnd = amountSepPos >= 0 ? amountSepPos : body.length;
-  // If caret is after account token (eg user typed spaces), clamp to account end so suggestions still work.
-  if (bodyCaret > accountEnd) bodyCaret = accountEnd;
+  // Past the account token → in the amount/spacing area, no suggestions.
+  if (bodyCaret > accountEnd) return null;
+  // Mid-account → editing within an existing name, no suggestions.
+  if (bodyCaret < accountEnd) return null;
 
   const typed = body.slice(0, bodyCaret);
   if (!typed || /\s/.test(typed)) return null;
@@ -1167,6 +1169,7 @@ function buildAccountSuggestionModel(fullText, cursorPos, accountNames, prevSugg
     replaceEnd,
     typed,
     matches,
+    ghostCol: indentLen + statusPrefixLen + bodyCaret,
     selectedIndex: sameAnchor ? Math.min(prevSuggest.selectedIndex || 0, matches.length - 1) : 0,
   };
 }
@@ -1278,6 +1281,7 @@ export default function App() {
   const [filePath, setFilePath] = useState(null);
   const [baselineText, setBaselineText] = useState("");
   const [includedFiles, setIncludedFiles] = useState([]);
+  const [failedIncludes, setFailedIncludes] = useState([]);
   const [settings, setSettings] = useState(DEFAULT_SETTINGS);
   const [settingsDraft, setSettingsDraft] = useState(null);
   const [showExternalChange, setShowExternalChange] = useState(false);
@@ -1935,16 +1939,28 @@ export default function App() {
   useEffect(() => {
     if (!window.electronAPI || !filePath) {
       setIncludedFiles([]);
+      setFailedIncludes([]);
       return undefined;
     }
 
     let cancelled = false;
     const timer = setTimeout(async () => {
       try {
-        const files = await window.electronAPI.resolveIncludes?.(text, filePath);
-        if (!cancelled) setIncludedFiles(Array.isArray(files) ? files : []);
+        const result = await window.electronAPI.resolveIncludes?.(text, filePath);
+        if (!cancelled) {
+          if (result && !Array.isArray(result)) {
+            setIncludedFiles(Array.isArray(result.resolved) ? result.resolved : []);
+            setFailedIncludes(Array.isArray(result.failed) ? result.failed : []);
+          } else {
+            setIncludedFiles(Array.isArray(result) ? result : []);
+            setFailedIncludes([]);
+          }
+        }
       } catch {
-        if (!cancelled) setIncludedFiles([]);
+        if (!cancelled) {
+          setIncludedFiles([]);
+          setFailedIncludes([]);
+        }
       }
     }, 220);
 
@@ -1954,9 +1970,16 @@ export default function App() {
     };
   }, [text, filePath]);
 
+  // ─── Debounced text for parsing (keeps typing snappy on large files) ──
+  const [debouncedText, setDebouncedText] = useState(text);
+  useEffect(() => {
+    const id = setTimeout(() => setDebouncedText(text), 150);
+    return () => clearTimeout(id);
+  }, [text]);
+
   // ─── Parse ─────────────────────────────────────────────────────
   const lines = text.split("\n");
-  const parsedRoot = useMemo(() => parseJournal(text, "root"), [text]);
+  const parsedRoot = useMemo(() => parseJournal(debouncedText, "root"), [debouncedText]);
   const transactionsRoot = parsedRoot.transactions;
   const directivesRoot = parsedRoot.directives;
   const parsedIncludes = useMemo(
@@ -2007,6 +2030,11 @@ export default function App() {
 
   const allErrors = [];
   const allWarnings = [...rootTypoWarnings];
+  for (const fi of failedIncludes) {
+    if (fi.sourceFile === filePath) {
+      allWarnings.push({ line: fi.line, msg: `Could not resolve include "${fi.target}".`, type: "warning", source: "root" });
+    }
+  }
   for (const tx of transactionsRoot) {
     allErrors.push(...tx.errors);
     allWarnings.push(...tx.warnings);
@@ -2223,7 +2251,7 @@ export default function App() {
               const lineCls = flashLine === i ? "line-flash" : hl.hasError ? "line-error" : hl.hasWarning ? "line-warning" : accountHighlightLines.has(i) ? "line-account-hl" : "";
               return (
               <div key={flashLine === i ? `${i}-flash` : i} className={lineCls}
-                style={{ height: lineHeight, lineHeight: lineHeight + "px", fontFamily: FONT, fontSize, whiteSpace: "pre", paddingRight: 12 }}>
+                style={{ position: "relative", height: lineHeight, lineHeight: lineHeight + "px", fontFamily: FONT, fontSize, whiteSpace: "pre", paddingRight: 12 }}>
                 {renderLineWithFindHighlight(hl.segments, lineStartOffsets[i], activeFindRange).map((seg) => {
                   const clsNames = [];
                   if (seg.cls) clsNames.push(`seg-${seg.cls}`);
@@ -2245,7 +2273,7 @@ export default function App() {
                     const suffix = chosen.slice(typed.length);
                     if (!suffix) return null;
                     return (
-                    <span className="seg-gh">
+                    <span className="seg-gh" style={{ position: "absolute", left: `${accountSuggest.ghostCol}ch`, pointerEvents: "none" }}>
                       {suffix}
                     </span>
                     );
